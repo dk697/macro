@@ -20,6 +20,15 @@ const PIPELINE = '00000000-0000-0000-0000-00000000b001';
 const DB = '00000000-0000-0000-0000-00000000b002';
 const TABLE = '00000000-0000-0000-0000-00000000b003';
 const VIEW = '00000000-0000-0000-0000-00000000b004';
+const COL_CONTACT = '00000000-0000-0000-0000-00000000c101';
+const COL_STAGE = '00000000-0000-0000-0000-00000000c102';
+const DEF_CONTACT = '00000000-0000-0000-0000-00000000d101';
+const DEF_STAGE = '00000000-0000-0000-0000-00000000d102';
+const OPT_LEAD = '00000000-0000-0000-0000-00000000f101';
+const OPT_ONBOARDING = '00000000-0000-0000-0000-00000000f102';
+const OPT_SEARCHING = '00000000-0000-0000-0000-00000000f103';
+const OPT_CONTRACT = '00000000-0000-0000-0000-00000000f104';
+const OPT_SETTLED = '00000000-0000-0000-0000-00000000f105';
 
 type Contact = {
   id: string;
@@ -29,9 +38,9 @@ type Contact = {
   stage: string;
 };
 const contacts: Contact[] = [
-  { id: SAM, companyId: null, email: 'sam.lee@gmail.com', name: 'Sam & Alex Lee', stage: 'opt-searching' },
-  { id: PRIYA, companyId: null, email: 'priya.nair@outlook.com', name: 'Priya Nair', stage: 'opt-onboarding' },
-  { id: JANE, companyId: ACME, email: 'jane@acmeconvey.com.au', name: 'Jane Doe', stage: 'opt-lead' },
+  { id: SAM, companyId: null, email: 'sam.lee@gmail.com', name: 'Sam & Alex Lee', stage: OPT_SEARCHING },
+  { id: PRIYA, companyId: null, email: 'priya.nair@outlook.com', name: 'Priya Nair', stage: OPT_ONBOARDING },
+  { id: JANE, companyId: ACME, email: 'jane@acmeconvey.com.au', name: 'Jane Doe', stage: OPT_LEAD },
 ];
 const company = {
   id: ACME,
@@ -89,7 +98,7 @@ const contactGraphql = (c: Contact) => ({
 });
 const option = (id: string, label: string, order: number) => ({
   id,
-  property_definition_id: 'def-stage',
+  property_definition_id: DEF_STAGE,
   display_order: order,
   color: null,
   value: { type: 'string', value: label },
@@ -116,22 +125,22 @@ const table = {
       sql_name: 'Contact',
       writable: true,
       shared_outside_database: false,
-      column: { id: 'col-contact', table_id: TABLE, property_definition_id: 'def-contact', position: 'a0', config: null, display_name: null, infer_type: false, nullable: false, protections: ['delete', 'change_type'] },
-      definition: { definition: definition('def-contact', 'Contact', 'ENTITY', 'CONTACT'), property_options: [] },
+      column: { id: COL_CONTACT, table_id: TABLE, property_definition_id: DEF_CONTACT, position: 'a0', config: null, display_name: null, infer_type: false, nullable: false, protections: ['delete', 'change_type'] },
+      definition: { definition: definition(DEF_CONTACT, 'Contact', 'ENTITY', 'CONTACT'), property_options: [] },
     },
     {
       sql_name: 'Stage',
       writable: true,
       shared_outside_database: false,
-      column: { id: 'col-stage', table_id: TABLE, property_definition_id: 'def-stage', position: 'a1', config: null, display_name: null, infer_type: false },
+      column: { id: COL_STAGE, table_id: TABLE, property_definition_id: DEF_STAGE, position: 'a1', config: null, display_name: null, infer_type: false },
       definition: {
-        definition: definition('def-stage', 'Stage', 'SELECT_STRING', null),
+        definition: definition(DEF_STAGE, 'Stage', 'SELECT_STRING', null),
         property_options: [
-          option('opt-lead', 'Lead', 0),
-          option('opt-onboarding', 'Onboarding', 1),
-          option('opt-searching', 'Searching', 2),
-          option('opt-contract', 'Under contract', 3),
-          option('opt-settled', 'Settled', 4),
+          option(OPT_LEAD, 'Lead', 0),
+          option(OPT_ONBOARDING, 'Onboarding', 1),
+          option(OPT_SEARCHING, 'Searching', 2),
+          option(OPT_CONTRACT, 'Under contract', 3),
+          option(OPT_SETTLED, 'Settled', 4),
         ],
       },
     },
@@ -146,7 +155,7 @@ const table = {
       createdAt: T0,
       updatedAt: T0,
       query: { filter: null, sort: [] },
-      layout: { kind: 'board', groupBy: 'col-stage', title: 'col-contact', cardFields: [], lanes: [], hideEmptyLanes: false },
+      layout: { kind: 'board', groupBy: COL_STAGE, title: COL_CONTACT, cardFields: [], lanes: [], hideEmptyLanes: false },
     },
   ],
 };
@@ -158,7 +167,7 @@ const pipeline = {
   recordType: 'contact',
   databaseId: DB,
   tableId: TABLE,
-  primaryColumnId: 'col-contact',
+  primaryColumnId: COL_CONTACT,
   sharing: 'team',
   grant: 'owner',
   createdAt: T0,
@@ -166,10 +175,10 @@ const pipeline = {
 };
 const rows = () => ({
   rows: contacts.map((c) => ({
-    rowId: `row-${c.id}`,
+    rowId: c.id.replace('0000a', '0000e'),
     cells: {
-      'col-contact': { type: 'EntityReference', value: [{ entity_id: c.id, entity_type: 'CONTACT', specific_message_id: null }] },
-      'col-stage': { type: 'SelectOption', value: [c.stage] },
+      [COL_CONTACT]: { type: 'EntityReference', value: [{ entity_id: c.id, entity_type: 'CONTACT', specific_message_id: null }] },
+      [COL_STAGE]: { type: 'SelectOption', value: [c.stage] },
     },
   })),
   next: null,
@@ -194,6 +203,10 @@ const unknown: string[] = [];
 const steps: Record<string, string> = {};
 const created: unknown[] = [];
 page.on('pageerror', (error) => errors.push(error.message));
+page.on('console', (message) => {
+  if (message.type() === 'error' || message.type() === 'warning')
+    errors.push(`${message.type()}: ${message.text().slice(0, 400)}`);
+});
 await context.addCookies([{ name: 'login', value: 'true', url: origin }]);
 await page.addInitScript(
   ([key, view]) => localStorage.setItem(key, JSON.stringify(view)),
@@ -236,7 +249,7 @@ await page.route('**/*', async (route) => {
     created.push(body);
     if (contacts.some((c) => c.email === body.email.toLowerCase()))
       return respond({ message: 'a crm contact with this email already exists for the team' }, 409);
-    const c: Contact = { id: '00000000-0000-0000-0000-00000000a0ff', companyId: null, email: body.email.toLowerCase(), name: body.name, stage: 'opt-lead' };
+    const c: Contact = { id: '00000000-0000-0000-0000-00000000a0ff', companyId: null, email: body.email.toLowerCase(), name: body.name, stage: OPT_LEAD };
     contacts.push(c);
     return respond(contactResponse(c));
   }
@@ -289,14 +302,18 @@ await step('01-people', async () => {
 
 await step('02-new-contact-no-company', async () => {
   await page.getByRole('button', { name: 'New contact' }).first().click();
-  await page.getByLabel('Contact name').fill('Jordan & Kim Walsh');
-  await page.getByLabel('Email').fill('jordan.walsh@gmail.com');
+  const dialog = page.getByRole('form', { name: 'New contact' });
+  await dialog.getByLabel('Contact name').fill('Jordan & Kim Walsh');
+  await dialog.getByLabel('Email').fill('jordan.walsh@gmail.com');
   await settle();
   await shot('02-new-contact-no-company');
 });
 
 await step('03-created-person-contact', async () => {
-  await page.getByRole('button', { name: /Create Contact/i }).click();
+  await page
+    .getByRole('form', { name: 'New contact' })
+    .getByRole('button', { name: /Create Contact/i })
+    .click();
   await page.getByText('jordan.walsh@gmail.com').first().waitFor();
   await settle();
   await shot('03-created-person-contact');
@@ -306,10 +323,11 @@ await step('04-duplicate-refused', async () => {
   await page.goto(`${origin}/app/companies?s0.crm.tab=people`, { waitUntil: 'domcontentloaded' });
   await page.getByText('sam.lee@gmail.com').first().waitFor();
   await page.getByRole('button', { name: 'New contact' }).first().click();
-  await page.getByLabel('Contact name').fill('Sam Lee');
-  await page.getByLabel('Email').fill('sam.lee@gmail.com');
-  await page.getByRole('button', { name: /Create Contact/i }).click();
-  await page.getByRole('alert').first().waitFor();
+  const dialog = page.getByRole('form', { name: 'New contact' });
+  await dialog.getByLabel('Contact name').fill('Sam Lee');
+  await dialog.getByLabel('Email').fill('sam.lee@gmail.com');
+  await dialog.getByRole('button', { name: /Create Contact/i }).click();
+  await dialog.getByRole('alert').waitFor();
   await settle();
   await shot('04-duplicate-refused');
   await page.keyboard.press('Escape');
@@ -331,7 +349,7 @@ await step('06-company-contact-page', async () => {
 
 await step('07-buyers-pipeline', async () => {
   await page.goto(`${origin}/app/companies/pipeline/${PIPELINE}`, { waitUntil: 'domcontentloaded' });
-  await page.getByText('Searching').first().waitFor();
+  await page.getByText('Sam & Alex Lee').first().waitFor();
   await page.waitForTimeout(3000);
   await shot('07-buyers-pipeline');
 });

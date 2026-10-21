@@ -50,6 +50,11 @@ jobs:
     - name: Regenerate GraphQL types
       working-directory: apps/web
       run: bun run gen-graphql
+    - name: Format changed web files
+      working-directory: apps/web
+      run: |
+        files=$(env -u LD_LIBRARY_PATH /usr/bin/git diff --relative --name-only 7d0b1af3be63603d94d2ffda73e971e1e345a2a6 HEAD -- src tests | grep -E '\.tsx?$' | grep -v '/generated/')
+        biome format --write $files
     - name: Save generated changes
       if: always()
       run: |
