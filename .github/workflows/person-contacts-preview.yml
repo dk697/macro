@@ -55,6 +55,11 @@ jobs:
         git add -A ':!.github/workflows/person-contacts-preview.yml'
         git diff --cached --stat > "$RUNNER_TEMP/results/generated.stat" || true
         git diff --cached > "$RUNNER_TEMP/results/generated.patch" || true
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: generated
+        path: ${{ runner.temp }}/results/generated.patch
     - name: Type-check web
       id: typecheck
       continue-on-error: true
@@ -88,4 +93,62 @@ jobs:
         git config user.name "github-actions"
         git config user.email "github-actions@users.noreply.github.com"
         git add -A && git commit -qm "Results for $GITHUB_SHA"
+        git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:refs/heads/preview/person-contacts-results
+  screenshots:
+    needs: generate-and-check
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      SQLX_OFFLINE: 'true'
+    steps:
+    - uses: actions/checkout@v4
+    - name: Free disk space
+      run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+    - uses: actions/download-artifact@v4
+      with:
+        name: generated
+        path: ${{ runner.temp }}/generated
+    - name: Apply generated files
+      run: git apply --allow-empty "$RUNNER_TEMP/generated/generated.patch"
+    - uses: DeterminateSystems/nix-installer-action@v16
+    - name: Enter Nix dev shell
+      uses: ./.github/actions/setup-nix-dev-shell
+    - name: Install web dependencies
+      run: bun install --frozen-lockfile
+    - name: Build WASM packages
+      working-directory: apps/web
+      run: just build-wasm
+    - name: Build the web app with the person contacts harness
+      working-directory: apps/web
+      run: MODE=development NODE_OPTIONS=--max-old-space-size=12288 bunx vite build -c tests/person-contacts/vite.config.ts
+    - name: Install Chromium
+      working-directory: apps/web
+      run: bunx playwright install --with-deps chromium
+    - name: Take screenshots
+      id: shots
+      continue-on-error: true
+      working-directory: apps/web
+      env:
+        PERSON_CONTACTS_OUT: ${{ runner.temp }}/shots
+      run: |
+        bunx vite preview -c tests/person-contacts/vite.config.ts --outDir /tmp/person-contacts-dist --base /app --port 3038 > "$RUNNER_TEMP/preview.log" 2>&1 &
+        for i in $(seq 1 60); do curl -sf http://127.0.0.1:3038/app/ >/dev/null && break; sleep 1; done
+        bun build tests/person-contacts/browser.ts --target=node --packages=external --outfile=node_modules/.person-contacts-browser/browser.mjs
+        node node_modules/.person-contacts-browser/browser.mjs
+    - name: Publish screenshots
+      if: always()
+      run: |
+        mkdir -p "$RUNNER_TEMP/shots"
+        cp "$RUNNER_TEMP/preview.log" "$RUNNER_TEMP/shots/" 2>/dev/null || true
+        cd "$RUNNER_TEMP"
+        git clone -q --depth 1 --branch preview/person-contacts-results "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" results || (mkdir results && cd results && git init -q -b preview-results)
+        cd results
+        rm -rf shots && cp -r "$RUNNER_TEMP/shots" shots
+        echo "screenshots: ${{ steps.shots.outcome }}" >> summary.txt
+        git config user.name "github-actions"
+        git config user.email "github-actions@users.noreply.github.com"
+        git add -A && git commit -qm "Screenshots for $GITHUB_SHA" || true
         git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" HEAD:refs/heads/preview/person-contacts-results
