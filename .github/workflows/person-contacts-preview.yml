@@ -70,8 +70,9 @@ jobs:
     - name: Biome on changed web files
       id: biome
       continue-on-error: true
+      working-directory: apps/web
       run: |
-        files=$(env -u LD_LIBRARY_PATH /usr/bin/git diff --name-only 7d0b1af3be63603d94d2ffda73e971e1e345a2a6 HEAD -- apps/web/src apps/web/tests | grep -E '\.tsx?$' | grep -v '/generated/')
+        files=$(env -u LD_LIBRARY_PATH /usr/bin/git diff --relative --name-only 7d0b1af3be63603d94d2ffda73e971e1e345a2a6 HEAD -- src tests | grep -E '\.tsx?$' | grep -v '/generated/')
         echo "$files"
         test -n "$files"
         biome check $files 2>&1 | tee "$RUNNER_TEMP/results/biome.log"; exit ${PIPESTATUS[0]}
@@ -142,7 +143,7 @@ jobs:
         bunx vite preview -c tests/person-contacts/vite.config.ts --outDir /tmp/person-contacts-dist --base /app --port 3038 > "$RUNNER_TEMP/preview.log" 2>&1 &
         for i in $(seq 1 60); do curl -sf http://127.0.0.1:3038/app/ >/dev/null && break; sleep 1; done
         bun build tests/person-contacts/browser.ts --target=node --packages=external --outfile=node_modules/.person-contacts-browser/browser.mjs
-        node node_modules/.person-contacts-browser/browser.mjs
+        env -u LD_LIBRARY_PATH node node_modules/.person-contacts-browser/browser.mjs
     - name: Publish screenshots
       if: always()
       run: |

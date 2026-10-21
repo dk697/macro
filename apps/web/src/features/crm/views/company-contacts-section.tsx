@@ -20,6 +20,7 @@ function ContactRow(props: {
   const name = () => props.contact.name || props.contact.email;
   const entity = (): CrmContactEntity => ({
     ...props.contact,
+    companyId: props.contact.companyId ?? undefined,
     type: 'crm_contact',
     name: name(),
     ownerId: props.ownerId,

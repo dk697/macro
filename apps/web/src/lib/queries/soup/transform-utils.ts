@@ -987,6 +987,8 @@ export const mapApiSoupItemToEntity = (
     }))
     .with({ tag: 'crmContact' }, (item) => ({
       ...item.data,
+      companyId: item.data.companyId ?? undefined,
+      companyName: item.data.companyName ?? undefined,
       type: 'crm_contact' as const,
       name: item.data.name?.trim() || item.data.email,
       ownerId: item.data.teamId,
