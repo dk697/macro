@@ -20,6 +20,7 @@ const PIPELINE = '00000000-0000-0000-0000-00000000b001';
 const DB = '00000000-0000-0000-0000-00000000b002';
 const TABLE = '00000000-0000-0000-0000-00000000b003';
 const VIEW = '00000000-0000-0000-0000-00000000b004';
+const TABLE_VIEW = '00000000-0000-0000-0000-00000000b005';
 const COL_CONTACT = '00000000-0000-0000-0000-00000000c101';
 const COL_STAGE = '00000000-0000-0000-0000-00000000c102';
 const DEF_CONTACT = '00000000-0000-0000-0000-00000000d101';
@@ -147,11 +148,22 @@ const table = {
   ],
   views: [
     {
+      id: TABLE_VIEW,
+      tableId: TABLE,
+      databaseId: DB,
+      name: 'All records',
+      position: 'a0',
+      createdAt: T0,
+      updatedAt: T0,
+      query: { filter: null, sort: [] },
+      layout: { kind: 'table', columns: [] },
+    },
+    {
       id: VIEW,
       tableId: TABLE,
       databaseId: DB,
       name: 'Board',
-      position: 'a0',
+      position: 'a1',
       createdAt: T0,
       updatedAt: T0,
       query: { filter: null, sort: [] },
@@ -210,7 +222,7 @@ page.on('console', (message) => {
 await context.addCookies([{ name: 'login', value: 'true', url: origin }]);
 await page.addInitScript(
   ([key, view]) => localStorage.setItem(key, JSON.stringify(view)),
-  [`macro:pref:crm:pipeline-view:${PIPELINE}`, VIEW]
+  [`macro:pref:crm:pipeline-view:${PIPELINE}`, TABLE_VIEW]
 );
 await page.routeWebSocket('**/*', (socket) => socket.close());
 
@@ -352,6 +364,12 @@ await step('07-buyers-pipeline', async () => {
   await page.getByText('Sam & Alex Lee').first().waitFor();
   await page.waitForTimeout(3000);
   await shot('07-buyers-pipeline');
+});
+
+await step('08-buyers-board', async () => {
+  await page.getByRole('tab', { name: 'Board' }).or(page.getByRole('button', { name: 'Board' })).first().click();
+  await page.waitForTimeout(3000);
+  await shot('08-buyers-board');
 });
 
 writeFileSync(
