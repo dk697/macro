@@ -15,6 +15,7 @@ mod link_contact_pairs_with_sources;
 mod list_companies_for_soup;
 mod list_contacts_for_company;
 mod list_contacts_for_soup;
+mod person_contacts;
 mod populate_contact;
 mod resolve_association;
 mod search_contacts_for_team;

@@ -45,7 +45,7 @@ export function Contact(props: {
         type: 'contact',
         id: current.id,
         email: current.email,
-        companyId: current.companyId,
+        companyId: current.companyId ?? undefined,
       };
     },
     undefined,

@@ -483,6 +483,13 @@ pub(crate) fn crm_error_description(err: &CrmError) -> String {
         CrmError::ContactEmailDomainMismatch => {
             "the contact's email domain must be one of the company's domains".to_string()
         }
+        CrmError::ContactAlreadyExistsForTeam => {
+            "the team already has a contact with that email".to_string()
+        }
+        CrmError::ContactDomainTrackedByCompany => {
+            "the team tracks that email's domain as a company; add the contact with that company's id"
+                .to_string()
+        }
         CrmError::StageEditRoleRequired(role) => format!(
             "editing deal stages requires the {} team role",
             role.as_db_str()

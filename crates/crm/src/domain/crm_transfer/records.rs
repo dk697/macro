@@ -60,14 +60,17 @@ impl<Crm: CrmService, Access: EntityAccessService> CrmTransferRecords<Crm, Acces
 /// A refusal the user can fix by changing the row, as opposed to a failure.
 fn refusal(error: CrmError) -> Result<Created, TransferError> {
     match error {
-        CrmError::CompanyAlreadyExistsForTeam | CrmError::ContactAlreadyExistsForCompany => {
-            Ok(Created::Exists)
-        }
+        CrmError::CompanyAlreadyExistsForTeam
+        | CrmError::ContactAlreadyExistsForCompany
+        | CrmError::ContactAlreadyExistsForTeam => Ok(Created::Exists),
         CrmError::InvalidRequest(reason) => Ok(Created::Refused(reason)),
         CrmError::ContactEmailDomainMismatch => Ok(Created::Refused(
             "the email's domain is not one of its company's domains".into(),
         )),
         CrmError::CompanyHidden => Ok(Created::Refused("its company is hidden".into())),
+        CrmError::ContactDomainTrackedByCompany => Ok(Created::Refused(
+            "a company already tracks the email's domain".into(),
+        )),
         other => Err(other.into()),
     }
 }
@@ -177,6 +180,19 @@ impl<Crm: CrmService, Access: EntityAccessService> TransferRecords
         )?;
         let receipt = CrmCompanyReceipt::new(receipt, team_id, team_role);
         match self.crm.create_contact(&receipt, name, email).await {
+            Ok(contact) => Ok(Created::New(contact.id)),
+            Err(error) => refusal(error),
+        }
+    }
+
+    async fn create_person_contact(
+        &self,
+        viewer: &Viewer,
+        name: &str,
+        email: &str,
+    ) -> Result<Created, TransferError> {
+        let team = self.team(viewer).await?;
+        match self.crm.create_person_contact(&team, name, email).await {
             Ok(contact) => Ok(Created::New(contact.id)),
             Err(error) => refusal(error),
         }

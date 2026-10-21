@@ -517,6 +517,7 @@ export * from './createChannelScopedBotRequestTokenLabel';
 export * from './createChannelScopedBotResponse';
 export * from './createCrmCompanyRequest';
 export * from './createCrmContactRequest';
+export * from './createCrmPersonContactRequest';
 export * from './createDatabaseRequest';
 export * from './createDatabaseWebhookRequest';
 export * from './createDocument200';

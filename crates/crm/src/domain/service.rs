@@ -227,6 +227,25 @@ pub trait CrmService: Clone + Send + Sync + 'static {
         email: &str,
     ) -> impl Future<Output = Result<CrmContact, CrmError>> + Send;
 
+    /// Manually creates a person contact: a contact with no company, for a
+    /// client on a personal address such as `gmail.com`. Any team member may
+    /// add one. Validation matches [`CrmService::create_contact`].
+    ///
+    /// Email from or to the address then attaches to the contact, including
+    /// on generic provider domains, which never create CRM rows on their
+    /// own. Returns [`CrmError::ContactDomainTrackedByCompany`] when the team
+    /// tracks the email's domain as a company,
+    /// [`CrmError::ContactAlreadyExistsForTeam`] when a contact already has
+    /// the email, and [`CrmError::CrmDisabledForTeam`] when the killswitch is
+    /// off. See
+    /// [`crate::domain::companies_repo::CompaniesRepository::create_person_contact`].
+    fn create_person_contact(
+        &self,
+        access: &CrmTeamReceipt<MemberTeamRole>,
+        name: &str,
+        email: &str,
+    ) -> impl Future<Output = Result<CrmContact, CrmError>> + Send;
+
     /// Toggle `email_sync` for the company addressed by `access`. Purely
     /// a visibility/permission flag — populate continues to write CRM
     /// rows regardless. Requires an admin/owner role on the receipt;
@@ -584,6 +603,19 @@ where
             )));
         }
 
+        // Personal / free-mail-provider domains (gmail, yahoo, hotmail,
+        // …) never create CRM rows: companies are keyed by domain, so
+        // one would swallow every contact on that provider. The address
+        // only attaches to a person contact the team created for it.
+        // Checked before the own-domain skip: a user on gmail.com still
+        // has clients on gmail.com.
+        if is_generic_email_domain(domain) {
+            return self
+                .companies_repository
+                .populate_person_contact(team_id, link_id, email, first_at, last_at, is_sent)
+                .await;
+        }
+
         // Skip when the contact lives on the user's own domain —
         // colleagues at the user's company shouldn't show up in their
         // team's CRM. Malformed user emails fall through to the regular
@@ -599,16 +631,6 @@ where
             tracing::debug!(
                 domain,
                 "Skipping CRM populate for contact on the user's own domain"
-            );
-            return Ok(());
-        }
-
-        // Skip personal / free-mail-provider domains (gmail, yahoo,
-        // hotmail, …). CRM rows are meant to represent companies
-        if is_generic_email_domain(domain) {
-            tracing::debug!(
-                domain,
-                "Skipping CRM populate for generic email provider domain"
             );
             return Ok(());
         }
@@ -764,6 +786,20 @@ where
                 Utc::now(),
                 include_hidden,
             )
+            .await
+    }
+
+    #[tracing::instrument(skip(self, access), err)]
+    async fn create_person_contact(
+        &self,
+        access: &CrmTeamReceipt<MemberTeamRole>,
+        name: &str,
+        email: &str,
+    ) -> Result<CrmContact, CrmError> {
+        let name = validate_display_name(name)?;
+        let email = normalize_contact_email(email)?;
+        self.companies_repository
+            .create_person_contact(&access.team_id(), &email, name, Utc::now())
             .await
     }
 
@@ -1122,6 +1158,15 @@ impl CrmService for NoOpCrmService {
         _email: &str,
     ) -> Result<CrmContact, CrmError> {
         unimplemented!("NoOpCrmService.create_contact")
+    }
+
+    async fn create_person_contact(
+        &self,
+        _access: &CrmTeamReceipt<MemberTeamRole>,
+        _name: &str,
+        _email: &str,
+    ) -> Result<CrmContact, CrmError> {
+        unimplemented!("NoOpCrmService.create_person_contact")
     }
 
     async fn set_email_sync(

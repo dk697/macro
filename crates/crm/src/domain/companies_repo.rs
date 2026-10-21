@@ -78,7 +78,11 @@ pub trait CompaniesRepository: Clone + Send + Sync + 'static {
     ///    advisory lock) so a concurrent `PATCH /team/crm`
     ///    disable — which flips the flag and purges `crm_companies` in
     ///    one tx — can't race past us and leave an orphan row.
-    /// 1. Look up the company for `(team_id, domain)`.
+    /// 1. If the team has a person contact (no company) for `email`, the
+    ///    person contact owns the address: merge its interaction range,
+    ///    upsert the `crm_contact_sources` row, and stop. No company is
+    ///    touched. See [`populate_person_contact`].
+    /// 2. Look up the company for `(team_id, domain)`.
     ///    - If a row exists it is reused and its `updated_at` is
     ///      refreshed. Populate runs regardless of the company's
     ///      `email_sync` — that flag is purely a visibility/permission
@@ -90,10 +94,10 @@ pub trait CompaniesRepository: Clone + Send + Sync + 'static {
     ///      lives in `crm_domain_directory` keyed by `domain`, not on
     ///      `crm_companies` — see [`lookup_domain_metadata`] /
     ///      [`upsert_domain_metadata`].
-    /// 2. Upsert `crm_contacts (company_id, email, name)`, refreshing
+    /// 3. Upsert `crm_contacts (company_id, email, name)`, refreshing
     ///    `updated_at` on existing contacts while preserving the first
     ///    non-NULL name with `name = COALESCE(crm_contacts.name, EXCLUDED.name)`.
-    /// 3. Upsert `crm_contact_sources (contact_id, link_id)` with
+    /// 4. Upsert `crm_contact_sources (contact_id, link_id)` with
     ///    `ON CONFLICT DO NOTHING`.
     ///
     /// `domain` and `email` are both normalized to lowercase before storage
@@ -137,6 +141,7 @@ pub trait CompaniesRepository: Clone + Send + Sync + 'static {
     ///
     /// [`lookup_domain_metadata`]: CompaniesRepository::lookup_domain_metadata
     /// [`upsert_domain_metadata`]: CompaniesRepository::upsert_domain_metadata
+    /// [`populate_person_contact`]: CompaniesRepository::populate_person_contact
     #[allow(clippy::too_many_arguments)]
     fn populate_contact(
         &self,
@@ -149,6 +154,52 @@ pub trait CompaniesRepository: Clone + Send + Sync + 'static {
         last_at: DateTime<Utc>,
         is_sent: bool,
     ) -> impl Future<Output = Result<(), CrmError>> + Send;
+
+    /// Populate for an address that must never create CRM rows, such as
+    /// one on a generic email provider domain (`gmail.com`). When the team
+    /// has CRM enabled and a person contact for `email`, merges the
+    /// interaction range like [`populate_contact`] and upserts the
+    /// `crm_contact_sources (contact_id, link_id)` row. Otherwise a no-op.
+    /// The name is never overwritten: person contacts are created by hand
+    /// and keep the name they were given.
+    ///
+    /// [`populate_contact`]: CompaniesRepository::populate_contact
+    fn populate_person_contact(
+        &self,
+        team_id: &uuid::Uuid,
+        link_id: &uuid::Uuid,
+        email: &str,
+        first_at: DateTime<Utc>,
+        last_at: DateTime<Utc>,
+        is_sent: bool,
+    ) -> impl Future<Output = Result<(), CrmError>> + Send;
+
+    /// Manually creates a person contact: a contact with no company,
+    /// owned by `team_id`, for a client on a personal address. In a
+    /// single transaction:
+    ///
+    /// 1. Takes the per-`(team, lower(domain))` advisory lock populate
+    ///    uses, so a concurrent populate for the same address serializes
+    ///    with us.
+    /// 2. Reads the team killswitch; returns
+    ///    [`CrmError::CrmDisabledForTeam`] when off.
+    /// 3. Returns [`CrmError::ContactDomainTrackedByCompany`] when the
+    ///    team tracks the email's domain as a company: that contact
+    ///    belongs under the company.
+    /// 4. Returns [`CrmError::ContactAlreadyExistsForTeam`] when any
+    ///    contact in the team already has the email.
+    /// 5. Inserts the row with `company_id = NULL`,
+    ///    `manually_created = TRUE` (so link teardown never deletes it)
+    ///    and both interaction endpoints seeded from `now`.
+    ///
+    /// `email` is normalized to lowercase before storage.
+    fn create_person_contact(
+        &self,
+        team_id: &uuid::Uuid,
+        email: &str,
+        name: &str,
+        now: DateTime<Utc>,
+    ) -> impl Future<Output = Result<CrmContact, CrmError>> + Send;
 
     /// Manually creates a company for `(team_id, domain)` with a
     /// team-scoped display `name`, sharing the insert path

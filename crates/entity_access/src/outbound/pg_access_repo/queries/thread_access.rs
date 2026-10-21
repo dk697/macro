@@ -238,14 +238,13 @@ pub async fn get_thread_access(
                   -- only block plain members.
                   SELECT 1
                   FROM participants p
-                  JOIN crm_contacts ct ON ct.email = p.email
-                  JOIN crm_companies c ON c.id = ct.company_id
-                  WHERE c.team_id = st.team_id
-                    AND split_part(p.email, '@', 2) <> split_part(LOWER($2), '@', 2)
+                  JOIN crm_contacts ct ON ct.email = p.email AND ct.team_id = st.team_id
+                  LEFT JOIN crm_companies c ON c.id = ct.company_id
+                  WHERE split_part(p.email, '@', 2) <> split_part(LOWER($2), '@', 2)
                     AND (
-                        NOT c.email_sync
+                        NOT COALESCE(c.email_sync, TRUE)
                         OR (
-                            (ct.hidden OR c.hidden)
+                            (ct.hidden OR COALESCE(c.hidden, FALSE))
                             AND st.team_role = 'member'
                         )
                     )
@@ -483,14 +482,13 @@ async fn explain_thread_crm(
           AND NOT EXISTS (
               SELECT 1
               FROM participants p
-              JOIN crm_contacts ct ON ct.email = p.email
-              JOIN crm_companies c ON c.id = ct.company_id
-              WHERE c.team_id = st.team_id
-                AND split_part(p.email, '@', 2) <> split_part(LOWER($2), '@', 2)
+              JOIN crm_contacts ct ON ct.email = p.email AND ct.team_id = st.team_id
+              LEFT JOIN crm_companies c ON c.id = ct.company_id
+              WHERE split_part(p.email, '@', 2) <> split_part(LOWER($2), '@', 2)
                 AND (
-                    NOT c.email_sync
+                    NOT COALESCE(c.email_sync, TRUE)
                     OR (
-                        (ct.hidden OR c.hidden)
+                        (ct.hidden OR COALESCE(c.hidden, FALSE))
                         AND st.team_role = 'member'
                     )
                 )

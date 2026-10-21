@@ -50,58 +50,61 @@ describe('contactCompany', () => {
 describe('recordChoiceProblem', () => {
   it('accepts an existing record as is', () => {
     expect(
-      recordChoiceProblem(
-        { kind: 'existing', record: { id: 'acme', name: '', detail: '' } },
-        []
-      )
+      recordChoiceProblem({
+        kind: 'existing',
+        record: { id: 'acme', name: '', detail: '' },
+      })
     ).toBeUndefined();
   });
 
   it('asks a new company for a name and a valid domain', () => {
     expect(
-      recordChoiceProblem(
-        { kind: 'new-company', name: ' ', domain: 'acme.com' },
-        []
-      )
+      recordChoiceProblem({
+        kind: 'new-company',
+        name: ' ',
+        domain: 'acme.com',
+      })
     ).toBe('Enter a company name');
     expect(
-      recordChoiceProblem(
-        { kind: 'new-company', name: 'Acme', domain: 'https://acme' },
-        []
-      )
+      recordChoiceProblem({
+        kind: 'new-company',
+        name: 'Acme',
+        domain: 'https://acme',
+      })
     ).toBe('Enter a valid domain like acme.com');
     expect(
-      recordChoiceProblem(
-        { kind: 'new-company', name: 'Acme', domain: 'acme.com' },
-        []
-      )
+      recordChoiceProblem({
+        kind: 'new-company',
+        name: 'Acme',
+        domain: 'acme.com',
+      })
     ).toBeUndefined();
   });
 
-  it('asks a new contact for a name and an email at a known company', () => {
+  it('asks a new contact for a name and an email', () => {
     expect(
-      recordChoiceProblem(
-        { kind: 'new-contact', name: '', email: 'jane@acme.com' },
-        companies
-      )
+      recordChoiceProblem({
+        kind: 'new-contact',
+        name: '',
+        email: 'jane@acme.com',
+      })
     ).toBe('Enter a name');
     expect(
-      recordChoiceProblem(
-        { kind: 'new-contact', name: 'Jane', email: 'jane' },
-        companies
-      )
+      recordChoiceProblem({ kind: 'new-contact', name: 'Jane', email: 'jane' })
     ).toBe('Enter an email like jane@acme.com');
     expect(
-      recordChoiceProblem(
-        { kind: 'new-contact', name: 'Jane', email: 'jane@Other.com' },
-        companies
-      )
-    ).toBe('No company uses other.com. Add the company first.');
+      recordChoiceProblem({
+        kind: 'new-contact',
+        name: 'Jane',
+        email: 'jane@Other.com',
+      })
+    ).toBeUndefined();
     expect(
-      recordChoiceProblem(
-        { kind: 'new-contact', name: 'Jane', email: 'jane@acme.com' },
-        companies
-      )
+      recordChoiceProblem({
+        kind: 'new-contact',
+        name: 'Jane',
+        email: 'jane@acme.com',
+      })
     ).toBeUndefined();
   });
 });

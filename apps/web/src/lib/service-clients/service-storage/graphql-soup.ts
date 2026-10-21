@@ -1915,8 +1915,8 @@ export function mapGraphqlSoupItem(
           data: {
             id: entity.id,
             teamId: entity.contactTeamId,
-            companyId: entity.companyId,
-            companyName: entity.companyName,
+            companyId: entity.parentCompanyId,
+            companyName: entity.parentCompanyName,
             email: entity.email,
             name: entity.crmContactName,
             hidden: entity.hidden,

@@ -59,10 +59,7 @@ export function contactCompany(
 }
 
 /** Why the record cannot be saved as entered, or nothing when it can. */
-export function recordChoiceProblem(
-  choice: RecordChoice,
-  companies: readonly DomainCompany[]
-): string | undefined {
+export function recordChoiceProblem(choice: RecordChoice): string | undefined {
   if (choice.kind === 'existing') return undefined;
   if (!choice.name.trim())
     return choice.kind === 'new-company'
@@ -72,10 +69,9 @@ export function recordChoiceProblem(
     return isCompanyDomain(choice.domain.trim())
       ? undefined
       : 'Enter a valid domain like acme.com';
-  const email = choice.email.trim();
-  const domain = EMAIL_PATTERN.exec(email)?.[1];
-  if (!domain) return 'Enter an email like jane@acme.com';
-  return contactCompany(email, companies)
+  // A new contact joins the company that uses its email's domain, or is a
+  // person contact with no company.
+  return EMAIL_PATTERN.test(choice.email.trim())
     ? undefined
-    : `No company uses ${domain.toLowerCase()}. Add the company first.`;
+    : 'Enter an email like jane@acme.com';
 }

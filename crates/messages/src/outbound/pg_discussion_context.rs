@@ -134,23 +134,36 @@ impl<
             .await?
             .ok_or_else(|| rootcause::report!("crm record no longer exists"))?;
         // Contacts have no owner property: a contact's discussion reaches its
-        // company's owner. This machine-only read selects notification
-        // candidates; delivery rechecks each candidate's current access.
-        let access = properties::domain::model::ViewReceipt::dangerously_assert_internal_user(
-            &record.company_id.to_string(),
-            entity_access::domain::models::EntityType::CrmCompany,
-        );
-        let owner = match self
-            .properties
-            .get_system_property_value(&access, system_properties::SystemPropertyKey::CompanyOwner)
-            .await?
-        {
-            Some(models_properties::service::property_value::PropertyValue::EntityRef(refs)) => {
-                refs.into_iter()
-                    .find(|reference| reference.entity_type == models_properties::EntityType::User)
-                    .map(|reference| reference.entity_id)
+        // company's owner, and a person contact's has no owner. This
+        // machine-only read selects notification candidates; delivery
+        // rechecks each candidate's current access.
+        let owner = match record.company_id {
+            Some(company_id) => {
+                let access =
+                    properties::domain::model::ViewReceipt::dangerously_assert_internal_user(
+                        &company_id.to_string(),
+                        entity_access::domain::models::EntityType::CrmCompany,
+                    );
+                match self
+                    .properties
+                    .get_system_property_value(
+                        &access,
+                        system_properties::SystemPropertyKey::CompanyOwner,
+                    )
+                    .await?
+                {
+                    Some(models_properties::service::property_value::PropertyValue::EntityRef(
+                        refs,
+                    )) => refs
+                        .into_iter()
+                        .find(|reference| {
+                            reference.entity_type == models_properties::EntityType::User
+                        })
+                        .map(|reference| reference.entity_id),
+                    _ => None,
+                }
             }
-            _ => None,
+            None => None,
         };
         Ok(DiscussionContext {
             name: record.name,

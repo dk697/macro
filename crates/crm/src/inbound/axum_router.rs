@@ -40,6 +40,9 @@ pub mod create_company;
 /// Manually create a contact (name + email) under a CRM company.
 pub mod create_contact;
 
+/// Manually create a person contact (name + email) with no company.
+pub mod create_person_contact;
+
 /// Team-level CRM configuration (permission thresholds, closed stages,
 /// team saved views).
 pub mod team_settings;
@@ -157,7 +160,8 @@ where
         )
         .route(
             "/contacts",
-            get(search_contacts::handler::<C, St, Eas, Auth>),
+            get(search_contacts::handler::<C, St, Eas, Auth>)
+                .post(create_person_contact::handler::<C, St, Eas, Auth>),
         )
         .route(
             "/contacts/by-email",
@@ -249,6 +253,20 @@ impl IntoResponse for CrmError {
                 StatusCode::CONFLICT,
                 Json(ErrorResponse {
                     message: "a crm contact with this email already exists for the company".into(),
+                }),
+            ),
+            CrmError::ContactAlreadyExistsForTeam => (
+                StatusCode::CONFLICT,
+                Json(ErrorResponse {
+                    message: "a crm contact with this email already exists for the team".into(),
+                }),
+            ),
+            CrmError::ContactDomainTrackedByCompany => (
+                StatusCode::CONFLICT,
+                Json(ErrorResponse {
+                    message: "a crm company already tracks this email domain; add the contact \
+                              under that company"
+                        .into(),
                 }),
             ),
             CrmError::ContactEmailDomainMismatch => (

@@ -31,10 +31,12 @@ and contacts under hidden companies are excluded. Columns are Person (name and
 email), Company and Last contacted (sortable). `Search people` matches name or
 email on the server after a short typing pause, so results include contacts not
 yet scrolled into view. **New contact** sits at the right end of the toolbar. Its
-dialog asks for a company through a **Choose a company** pill (searchable by name
-or domain, from the up to 500 most relevant companies with a domain) and fixes
-the email to that company's primary domain; **Add contact** on a company's Team
-tab skips the company pill. The company, contact and pipeline dialogs share the
+dialog offers an optional **Choose a company** pill (searchable by name or domain,
+from the up to 500 most relevant companies with a domain). With a company, the
+email is fixed to that company's primary domain; **No company** beside the pill
+clears it, and without one the email field takes a full address such as
+`jane@gmail.com`, creating a person contact. **Add contact** on a company's Team
+tab skips the company pill. A person contact's row has no Company value. The company, contact and pipeline dialogs share the
 task/project composer layout: name on the first row beside **Close**, details
 below, and a **Create …** button that also submits on Command-Enter.
 
@@ -154,12 +156,12 @@ inaccessible), it replaces its rows with `Couldn't load this list.` and
 `Retry` reloads it; a failed later page keeps the rows and shows `Couldn't
 load more.`
 A contact has the same layout with `Overview`, `Emails`, `Files`, `Tasks` and
-`Calls`: Overview pills show the email, the company (opens it) and `Last
-interacted`, followed by the contact's Pipelines cards. Its Files, Tasks, Calls,
+`Calls`: Overview pills show the email, the company (opens it; absent for a
+person contact) and `Last interacted`, followed by the contact's Pipelines cards. Its Files, Tasks, Calls,
 and References show items associated with the contact itself (its `Contacts`
 property or an @mention of it), not everything associated with its company;
 Files also includes attachments of emails with its address. Tasks created from a
-contact also reference its company. The side panel keeps Sharing (admins only)
+contact also reference its company, if it has one. The side panel keeps Sharing (admins only)
 and adds References.
 
 In a company or contact's Tasks tab, clicking a task (or pressing Enter on its
@@ -254,7 +256,8 @@ the table's own cell editors (unset ones read **Empty**). The body scrolls while
 the footer stays pinned with **Cancel** (Esc) and **Add deal**. Select
 fields can create a new option. Choosing **Add company “…”** creates the company
 with the row: a searched domain fills the domain and the name. **Add contact “…”**
-works the same way, and a new contact's email must use a company's domain.
+works the same way: a new contact joins the company that uses its email's
+domain, or is a person contact with no company.
 **Add deal** stays disabled until a record is chosen, and Command-Enter submits.
 The form makes one row with every value set. A board lane's **New record** opens
 the same dialog with the lane's stage filled in. The table's blank row at the

@@ -15,11 +15,18 @@ import {
 
 // The part before the @: non-empty, no whitespace or a second @.
 const LOCAL_PART_PATTERN = /^[^\s@]+$/;
+// A whole address for a person contact; the server validates it fully.
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function contactCreationError(cause: unknown): string {
+export function contactCreationError(
+  cause: unknown,
+  personContact = false
+): string {
   if (cause instanceof ThrownResultError) {
     if (cause.errors.some((e) => e.code === 'CONFLICT')) {
-      return 'A contact with this email already exists.';
+      return personContact
+        ? 'A contact with this email already exists, or its domain belongs to a company. Choose the company instead.'
+        : 'A contact with this email already exists.';
     }
     if (cause.errors.some((e) => e.code === 'FORBIDDEN')) {
       return "CRM isn't enabled for your team.";
@@ -61,13 +68,15 @@ function ContactCompanySelect(props: {
 }
 
 export function CreateContactModal(props: {
-  /** Opens the dialog; without a company, the dialog asks for one. */
+  /** Opens the dialog; without a company, one is optional. A contact with no
+   * company is a person contact, for a client on a personal address. */
   target?: { company?: { companyId: string; domain: string } };
   onClose(): void;
   onCreated(id: string): void;
 }) {
   const createContactMutation = useCreateContactMutation();
   const [name, setName] = createSignal('');
+  // The part before the @ under a company, or the whole address without one.
   const [localPart, setLocalPart] = createSignal('');
   const [pickedCompany, setPickedCompany] = createSignal<CompanyOption>();
   // The panel clips overflow, so the company menu mounts on the dialog itself.
@@ -86,7 +95,6 @@ export function CreateContactModal(props: {
     () =>
       contactName().length > 0 &&
       emailLocalPart().length > 0 &&
-      company() !== undefined &&
       !createContactMutation.isPending
   );
 
@@ -123,31 +131,35 @@ export function CreateContactModal(props: {
   async function submit() {
     if (createContactMutation.isPending) return;
     const target = company();
-    if (!target) {
-      setError('Choose a company');
-      return;
-    }
     if (!contactName()) {
       setError('Enter a name');
       return;
     }
-    if (!LOCAL_PART_PATTERN.test(emailLocalPart())) {
+    if (target && !LOCAL_PART_PATTERN.test(emailLocalPart())) {
       setError('Enter the part of the email before the @');
+      return;
+    }
+    if (!target && !EMAIL_PATTERN.test(emailLocalPart())) {
+      setError('Enter an email address');
       return;
     }
 
     setError(undefined);
     try {
-      const { id } = await createContactMutation.mutateAsync({
-        companyId: target.companyId,
-        name: contactName(),
-        email: `${emailLocalPart()}@${target.domain}`,
-      });
+      const { id } = await createContactMutation.mutateAsync(
+        target
+          ? {
+              companyId: target.companyId,
+              name: contactName(),
+              email: `${emailLocalPart()}@${target.domain}`,
+            }
+          : { name: contactName(), email: emailLocalPart() }
+      );
       resetAndClose();
       props.onCreated(id);
     } catch (cause) {
       console.error('Failed to create contact', cause);
-      setError(contactCreationError(cause));
+      setError(contactCreationError(cause, !target));
     }
   }
 
@@ -218,12 +230,13 @@ export function CreateContactModal(props: {
                   <span class="flex min-w-0 items-center">
                     <input
                       aria-label="Email"
-                      placeholder="jane"
+                      placeholder={company() ? 'jane' : 'jane@gmail.com'}
                       autocomplete="off"
                       spellcheck={false}
                       data-1p-ignore
                       aria-invalid={
-                        error() === 'Enter the part of the email before the @'
+                        error() === 'Enter the part of the email before the @' ||
+                        error() === 'Enter an email address'
                       }
                       class="ph-no-capture field-sizing-content max-w-full bg-transparent text-ink outline-none placeholder:text-ink-placeholder"
                       value={localPart()}
@@ -232,9 +245,13 @@ export function CreateContactModal(props: {
                         handleLocalPartInput(event.currentTarget.value)
                       }
                     />
-                    <span class="shrink-0 select-none text-ink-muted">
-                      @{company()?.domain ?? 'company domain'}
-                    </span>
+                    <Show when={company()}>
+                      {(target) => (
+                        <span class="shrink-0 select-none text-ink-muted">
+                          @{target().domain}
+                        </span>
+                      )}
+                    </Show>
                   </span>
                 </label>
                 <Show when={!props.target?.company}>
@@ -244,9 +261,22 @@ export function CreateContactModal(props: {
                       value={pickedCompany()}
                       onChange={(picked) => {
                         setPickedCompany(picked);
-                        setError(undefined);
+                        handleLocalPartInput(localPart());
                       }}
                     />
+                    <Show when={pickedCompany()}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={createContactMutation.isPending}
+                        onClick={() => {
+                          setPickedCompany(undefined);
+                          setError(undefined);
+                        }}
+                      >
+                        No company
+                      </Button>
+                    </Show>
                   </EntityComposer.Properties>
                 </Show>
               </EntityComposer.Main>

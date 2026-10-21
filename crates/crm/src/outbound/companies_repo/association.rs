@@ -106,11 +106,14 @@ impl CompaniesRepositoryImpl {
                     SELECT EXISTS (
                         SELECT 1
                         FROM crm_contacts ct
-                        JOIN crm_companies co ON co.id = ct.company_id
-                        JOIN team_crm_settings tcs ON tcs.team_id = co.team_id AND tcs.crm_enabled
-                        JOIN team_user tu ON tu.team_id = co.team_id AND tu.user_id = $1
+                        LEFT JOIN crm_companies co ON co.id = ct.company_id
+                        JOIN team_crm_settings tcs ON tcs.team_id = ct.team_id AND tcs.crm_enabled
+                        JOIN team_user tu ON tu.team_id = ct.team_id AND tu.user_id = $1
                         WHERE ct.id = $2
-                          AND (NOT (ct.hidden OR co.hidden) OR tu.team_role <> 'member')
+                          AND (
+                              NOT (ct.hidden OR COALESCE(co.hidden, FALSE))
+                              OR tu.team_role <> 'member'
+                          )
                     ) AS "visible!"
                     "#,
                     user_id,
@@ -128,11 +131,11 @@ impl CompaniesRepositoryImpl {
                     SELECT EXISTS (
                         SELECT 1
                         FROM crm_contacts ct
-                        JOIN crm_companies co ON co.id = ct.company_id
-                        JOIN team_crm_settings tcs ON tcs.team_id = co.team_id AND tcs.crm_enabled
+                        LEFT JOIN crm_companies co ON co.id = ct.company_id
+                        JOIN team_crm_settings tcs ON tcs.team_id = ct.team_id AND tcs.crm_enabled
                         WHERE ct.id = $1
-                          AND co.team_id = $2
-                          AND (NOT (ct.hidden OR co.hidden) OR $3)
+                          AND ct.team_id = $2
+                          AND (NOT (ct.hidden OR COALESCE(co.hidden, FALSE)) OR $3)
                     ) AS "visible!"
                     "#,
                     contact_id,

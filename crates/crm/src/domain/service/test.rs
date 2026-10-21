@@ -83,6 +83,28 @@ impl CompaniesRepository for StubRepo {
         unimplemented!()
     }
 
+    async fn populate_person_contact(
+        &self,
+        _team_id: &uuid::Uuid,
+        _link_id: &uuid::Uuid,
+        _email: &str,
+        _first_at: DateTime<Utc>,
+        _last_at: DateTime<Utc>,
+        _is_sent: bool,
+    ) -> Result<(), CrmError> {
+        unimplemented!()
+    }
+
+    async fn create_person_contact(
+        &self,
+        _team_id: &uuid::Uuid,
+        _email: &str,
+        _name: &str,
+        _now: DateTime<Utc>,
+    ) -> Result<CrmContact, CrmError> {
+        unimplemented!()
+    }
+
     async fn create_company_for_team(
         &self,
         _team_id: &uuid::Uuid,

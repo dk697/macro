@@ -70,7 +70,8 @@ const reference = (
 
 /**
  * Properties a task created from the record starts with, like project tasks
- * start in their project. A contact's tasks also join its company.
+ * start in their project. A contact's tasks also join its company, if it has
+ * one.
  */
 function taskAssociations(
   scope: CrmRecordScope
@@ -81,7 +82,9 @@ function taskAssociations(
     ])
     .with({ type: 'contact' }, ({ id, companyId }) => [
       reference(SYSTEM_PROPERTY_IDS.CONTACTS, id, 'CONTACT'),
-      reference(SYSTEM_PROPERTY_IDS.COMPANIES, companyId, 'COMPANY'),
+      ...(companyId
+        ? [reference(SYSTEM_PROPERTY_IDS.COMPANIES, companyId, 'COMPANY')]
+        : []),
     ])
     .exhaustive();
 }

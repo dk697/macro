@@ -178,6 +178,14 @@ pub trait TransferRecords: Send + Sync + 'static {
         name: &str,
         email: &str,
     ) -> impl Future<Output = Result<Created, TransferError>> + Send;
+
+    /// Create a person contact (no company) named `name` with `email`.
+    fn create_person_contact(
+        &self,
+        viewer: &Viewer,
+        name: &str,
+        email: &str,
+    ) -> impl Future<Output = Result<Created, TransferError>> + Send;
 }
 
 /// Reads and saves CSV files in Macro, as the viewer.

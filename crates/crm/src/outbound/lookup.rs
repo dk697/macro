@@ -50,7 +50,7 @@ impl PgCrmParentReader {
         .map(|row| {
             row.map(|row| CrmParentFacts {
                 team_id: row.team_id,
-                company_id: row.company_id,
+                company_id: Some(row.company_id),
                 name: row.name.unwrap_or_default(),
             })
         })
@@ -59,9 +59,8 @@ impl PgCrmParentReader {
     async fn contact(&self, id: Uuid) -> Result<Option<CrmParentFacts>, sqlx::Error> {
         sqlx::query!(
             r#"
-            SELECT c.team_id, ct.company_id, COALESCE(NULLIF(ct.name, ''), ct.email) AS "name!"
+            SELECT ct.team_id, ct.company_id, COALESCE(NULLIF(ct.name, ''), ct.email) AS "name!"
             FROM crm_contacts ct
-            JOIN crm_companies c ON c.id = ct.company_id
             WHERE ct.id = $1
             "#,
             id,

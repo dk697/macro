@@ -5,6 +5,7 @@ pub(crate) mod test;
 
 mod association;
 mod contact_listing;
+mod person_contacts;
 
 use crate::domain::{
     companies_repo::{CompaniesRepository, CrmCompanyListSort, CrmCompanySoupCursor},
@@ -296,7 +297,18 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
         // row was already inserted by the loser.
         Self::lock_team_domain(&mut tx, team_id, &normalized_domain).await?;
 
-        if !Self::team_crm_enabled(&mut tx, team_id).await? {
+        if !Self::team_crm_enabled(&mut tx, team_id).await?
+            || Self::attach_person_contact(
+                &mut *tx,
+                team_id,
+                link_id,
+                &normalized_email,
+                first_at,
+                last_at,
+                is_sent,
+            )
+            .await?
+        {
             tx.commit()
                 .await
                 .map_err(|e| CrmError::StorageLayerError(e.into()))?;
@@ -373,8 +385,8 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
         // company-cascade state from a prior hide.
         let contact_id = sqlx::query_scalar!(
             r#"
-            INSERT INTO crm_contacts (company_id, email, name, first_interaction, last_interaction, hidden)
-            VALUES ($1, $2, $3, $4, $5, $7)
+            INSERT INTO crm_contacts (team_id, company_id, email, name, first_interaction, last_interaction, hidden)
+            VALUES ($8, $1, $2, $3, $4, $5, $7)
             ON CONFLICT (company_id, email) DO UPDATE
                 SET name = COALESCE(crm_contacts.name, EXCLUDED.name),
                     updated_at = now(),
@@ -392,6 +404,7 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
             last_at,
             is_sent,
             company_hidden,
+            team_id,
         )
         .fetch_one(&mut *tx)
         .await
@@ -415,6 +428,40 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
             .map_err(|e| CrmError::StorageLayerError(e.into()))?;
 
         Ok(())
+    }
+
+    #[tracing::instrument(skip(self), err)]
+    async fn populate_person_contact(
+        &self,
+        team_id: &uuid::Uuid,
+        link_id: &uuid::Uuid,
+        email: &str,
+        first_at: DateTime<Utc>,
+        last_at: DateTime<Utc>,
+        is_sent: bool,
+    ) -> Result<(), CrmError> {
+        Self::attach_person_contact(
+            &self.pool,
+            team_id,
+            link_id,
+            &email.to_ascii_lowercase(),
+            first_at,
+            last_at,
+            is_sent,
+        )
+        .await
+        .map(|_| ())
+    }
+
+    #[tracing::instrument(skip(self), err)]
+    async fn create_person_contact(
+        &self,
+        team_id: &uuid::Uuid,
+        email: &str,
+        name: &str,
+        now: DateTime<Utc>,
+    ) -> Result<CrmContact, CrmError> {
+        self.insert_person_contact(team_id, email, name, now).await
     }
 
     #[tracing::instrument(skip(self), err)]
@@ -557,6 +604,24 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
             return Err(CrmError::ContactEmailDomainMismatch);
         }
 
+        let person_exists = sqlx::query_scalar!(
+            r#"
+            SELECT EXISTS (
+                SELECT 1 FROM crm_contacts
+                WHERE team_id = $1 AND company_id IS NULL AND LOWER(email) = $2
+            ) AS "exists!"
+            "#,
+            team_id,
+            normalized_email,
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| CrmError::StorageLayerError(e.into()))?;
+
+        if person_exists {
+            return Err(CrmError::ContactAlreadyExistsForTeam);
+        }
+
         // New contacts inherit the company's `hidden` (matches
         // populate). `manually_created = TRUE` shields the row from the
         // depopulate orphan cleanup — it has no sources by
@@ -566,8 +631,8 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
         let row = sqlx::query!(
             r#"
             INSERT INTO crm_contacts
-                (company_id, email, name, first_interaction, last_interaction, hidden, manually_created)
-            VALUES ($1, $2, $3, $4, $4, $5, TRUE)
+                (team_id, company_id, email, name, first_interaction, last_interaction, hidden, manually_created)
+            VALUES ($6, $1, $2, $3, $4, $4, $5, TRUE)
             ON CONFLICT (company_id, email) DO NOTHING
             RETURNING id, company_id, email, name, hidden,
                       first_interaction, last_interaction, created_at, updated_at
@@ -577,6 +642,7 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
             name,
             now,
             company.hidden,
+            team_id,
         )
         .fetch_optional(&mut *tx)
         .await
@@ -631,21 +697,29 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
         .await
         .map_err(|e| CrmError::StorageLayerError(e.into()))?;
 
-        // None here = nothing to tear down.
+        // None here = nothing to tear down. A person contact owns its
+        // address outright; a company contact is matched through the
+        // domain populate filed it under.
         let Some(row) = sqlx::query!(
             r#"
             SELECT
                 ct.id AS contact_id,
                 ct.manually_created AS "contact_manually_created!",
-                co.id AS company_id,
-                co.email_sync AS "email_sync!",
-                co.manually_created AS "company_manually_created!"
+                co.id AS "company_id?",
+                co.email_sync AS "email_sync?",
+                co.manually_created AS "company_manually_created?"
             FROM crm_contacts ct
-            JOIN crm_companies co ON co.id = ct.company_id
-            JOIN crm_domains d ON d.company_id = co.id
-            WHERE co.team_id = $1
+            LEFT JOIN crm_companies co ON co.id = ct.company_id
+            WHERE ct.team_id = $1
               AND LOWER(ct.email) = $2
-              AND LOWER(d.domain) = $3
+              AND (
+                  ct.company_id IS NULL
+                  OR EXISTS (
+                      SELECT 1 FROM crm_domains d
+                      WHERE d.company_id = co.id AND LOWER(d.domain) = $3
+                  )
+              )
+            ORDER BY (ct.company_id IS NULL) DESC
             LIMIT 1
             "#,
             team_id,
@@ -718,12 +792,15 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
         //    opt-out and a future populate would recreate as enabled.
         //    Manually created companies are likewise user data and
         //    survive teardown even when empty.
-        if !row.email_sync || row.company_manually_created {
-            tx.commit()
-                .await
-                .map_err(|e| CrmError::StorageLayerError(e.into()))?;
-            return Ok(outcome);
-        }
+        let company_id = match (row.company_id, row.email_sync, row.company_manually_created) {
+            (Some(company_id), Some(true), Some(false)) => company_id,
+            _ => {
+                tx.commit()
+                    .await
+                    .map_err(|e| CrmError::StorageLayerError(e.into()))?;
+                return Ok(outcome);
+            }
+        };
 
         let other_contacts = sqlx::query_scalar!(
             r#"
@@ -731,7 +808,7 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
                 SELECT 1 FROM crm_contacts WHERE company_id = $1 LIMIT 1
             ) AS "exists!"
             "#,
-            row.company_id,
+            company_id,
         )
         .fetch_one(&mut *tx)
         .await
@@ -745,11 +822,10 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
         }
 
         // crm_domains cascades via FK.
-        let company_result =
-            sqlx::query!(r#"DELETE FROM crm_companies WHERE id = $1"#, row.company_id,)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| CrmError::StorageLayerError(e.into()))?;
+        let company_result = sqlx::query!(r#"DELETE FROM crm_companies WHERE id = $1"#, company_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| CrmError::StorageLayerError(e.into()))?;
         outcome.company_deleted = company_result.rows_affected() > 0;
 
         tx.commit()
@@ -810,10 +886,9 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
         sqlx::query!(
             r#"
             DELETE FROM crm_contact_sources cs
-            USING crm_contacts ct, crm_companies co
+            USING crm_contacts ct
             WHERE cs.contact_id = ct.id
-              AND ct.company_id = co.id
-              AND co.team_id = $1
+              AND ct.team_id = $1
               AND cs.link_id = $2
             "#,
             team_id,
@@ -829,9 +904,7 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
         sqlx::query!(
             r#"
             DELETE FROM crm_contacts ct
-            USING crm_companies co
-            WHERE ct.company_id = co.id
-              AND co.team_id = $1
+            WHERE ct.team_id = $1
               AND ct.manually_created = FALSE
               AND NOT EXISTS (
                   SELECT 1 FROM crm_contact_sources WHERE contact_id = ct.id
@@ -1216,15 +1289,13 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
         contact_id: &uuid::Uuid,
         hidden: bool,
     ) -> Result<(), CrmError> {
-        // Scope via the contact's company; cross-team = NotFound.
+        // Scope via the contact's team; cross-team = NotFound.
         let updated = sqlx::query_scalar!(
             r#"
             UPDATE crm_contacts ct
             SET hidden = $3
-            FROM crm_companies co
             WHERE ct.id = $1
-              AND ct.company_id = co.id
-              AND co.team_id = $2
+              AND ct.team_id = $2
             RETURNING ct.id
             "#,
             contact_id,
@@ -1250,7 +1321,7 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
         name: &str,
         include_hidden: bool,
     ) -> Result<(), CrmError> {
-        // Scope via the contact's company; cross-team = NotFound. The
+        // Scope via the contact's team; cross-team = NotFound. The
         // hidden guard mirrors get_contact_for_team: member
         // (include_hidden = false) callers can't reach a hidden
         // contact or a contact under a hidden company.
@@ -1258,11 +1329,15 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
             r#"
             UPDATE crm_contacts ct
             SET name = $3
-            FROM crm_companies co
             WHERE ct.id = $1
-              AND ct.company_id = co.id
-              AND co.team_id = $2
-              AND ($4 OR (ct.hidden = FALSE AND co.hidden = FALSE))
+              AND ct.team_id = $2
+              AND ($4 OR (
+                  ct.hidden = FALSE
+                  AND NOT EXISTS (
+                      SELECT 1 FROM crm_companies co
+                      WHERE co.id = ct.company_id AND co.hidden
+                  )
+              ))
             RETURNING ct.id
             "#,
             contact_id,
@@ -1364,9 +1439,11 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
             Vec::new()
         } else {
             // Hash-join via derived table (avoids LATERAL per-row).
-            // At most one row per (team, email) by virtue of
+            // At most one row per (team, email): company contacts by
             // crm_contacts UNIQUE(company_id, email) +
-            // crm_domains UNIQUE(team_id, lower(domain)).
+            // crm_domains UNIQUE(team_id, lower(domain)), person contacts
+            // by owning their address (create and populate refuse a
+            // second contact for it).
             // ORDER BY input.ord preserves input order
             // (contract on `CrmScopePrecheck.addresses`).
             sqlx::query!(
@@ -1380,13 +1457,13 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
                 FROM UNNEST($2::text[]) WITH ORDINALITY AS input(address, ord)
                 LEFT JOIN (
                     SELECT
-                        ct.email     AS email,
-                        ct.hidden    AS contact_hidden,
-                        c.hidden     AS company_hidden,
-                        c.email_sync AS email_sync
+                        ct.email                                AS email,
+                        ct.hidden                               AS contact_hidden,
+                        COALESCE(c.hidden, FALSE)               AS company_hidden,
+                        COALESCE(c.email_sync, TRUE)            AS email_sync
                     FROM crm_contacts ct
-                    JOIN crm_companies c ON c.id = ct.company_id
-                    WHERE c.team_id = $1
+                    LEFT JOIN crm_companies c ON c.id = ct.company_id
+                    WHERE ct.team_id = $1
                 ) m ON m.email = input.address
                 ORDER BY input.ord
                 "#,
@@ -1665,7 +1742,7 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
         contact_id: &uuid::Uuid,
         include_hidden: bool,
     ) -> Result<Option<CrmContact>, CrmError> {
-        // Team scope is enforced via the company join (same pattern as
+        // Team scope is enforced via the contact's team (same pattern as
         // set_contact_hidden). For non-admins (`include_hidden =
         // false`), a hidden contact OR a hidden parent company is
         // treated as "not found" so existence doesn't leak. For
@@ -1684,10 +1761,10 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
                 ct.created_at,
                 ct.updated_at
             FROM crm_contacts ct
-            JOIN crm_companies co ON co.id = ct.company_id
+            LEFT JOIN crm_companies co ON co.id = ct.company_id
             WHERE ct.id = $1
-              AND co.team_id = $2
-              AND ($3 OR (ct.hidden = FALSE AND co.hidden = FALSE))
+              AND ct.team_id = $2
+              AND ($3 OR (ct.hidden = FALSE AND co.hidden IS NOT TRUE))
             "#,
             contact_id,
             team_id,
@@ -1733,9 +1810,9 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
                 ct.created_at,
                 ct.updated_at
             FROM crm_contacts ct
-            JOIN crm_companies co ON co.id = ct.company_id
-            WHERE co.team_id = $1
-              AND ($4 OR (ct.hidden = FALSE AND co.hidden = FALSE))
+            LEFT JOIN crm_companies co ON co.id = ct.company_id
+            WHERE ct.team_id = $1
+              AND ($4 OR (ct.hidden = FALSE AND co.hidden IS NOT TRUE))
               AND (
                   STRPOS(LOWER(ct.email), LOWER($2)) > 0
                   OR STRPOS(LOWER(COALESCE(ct.name, '')), LOWER($2)) > 0
@@ -1791,10 +1868,10 @@ impl CompaniesRepository for CompaniesRepositoryImpl {
                 ct.created_at,
                 ct.updated_at
             FROM crm_contacts ct
-            JOIN crm_companies co ON co.id = ct.company_id
+            LEFT JOIN crm_companies co ON co.id = ct.company_id
             WHERE ct.email = LOWER($1)
-              AND co.team_id = $2
-              AND ($3 OR (ct.hidden = FALSE AND co.hidden = FALSE))
+              AND ct.team_id = $2
+              AND ($3 OR (ct.hidden = FALSE AND co.hidden IS NOT TRUE))
             ORDER BY ct.id DESC
             LIMIT 1
             "#,

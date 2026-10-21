@@ -237,6 +237,7 @@ struct Records {
     contacts: HashMap<String, Uuid>,
     companies_created: Mutex<Vec<String>>,
     contacts_created: Mutex<Vec<(Uuid, String)>>,
+    people_created: Mutex<Vec<String>>,
 }
 
 impl TransferRecords for Records {
@@ -281,6 +282,19 @@ impl TransferRecords for Records {
             .lock()
             .unwrap()
             .push((company, email.to_owned()));
+        Ok(Created::New(Uuid::new_v5(
+            &Uuid::NAMESPACE_OID,
+            email.as_bytes(),
+        )))
+    }
+
+    async fn create_person_contact(
+        &self,
+        _: &Viewer,
+        _: &str,
+        email: &str,
+    ) -> Result<Created, TransferError> {
+        self.people_created.lock().unwrap().push(email.to_owned());
         Ok(Created::New(Uuid::new_v5(
             &Uuid::NAMESPACE_OID,
             email.as_bytes(),
@@ -469,6 +483,42 @@ async fn new_contacts_at_one_new_domain_share_one_new_company() {
             (id_of("beta.io"), "jane@beta.io".to_owned()),
             (id_of("beta.io"), "raj@beta.io".to_owned()),
         ]
+    );
+}
+
+#[tokio::test]
+async fn new_contacts_on_personal_addresses_become_person_contacts() {
+    let mut contacts = overview(PipelineRecordType::Contact);
+    contacts.fields[0].name = "Contact".into();
+    let pipeline = contacts.pipeline.pipeline.id;
+    let service = CrmTransferServiceImpl::new(
+        Arc::new(Workflows::new(contacts)),
+        Records::default(),
+        Files::default(),
+    );
+    let outcome = service
+        .import_to_pipeline(
+            &viewer(),
+            pipeline,
+            CsvInput::Text(
+                "Contact,Email\nSam Lee,sam.lee@gmail.com\nJo Park,jo@outlook.com\nRaj,raj@beta.io\n"
+                    .into(),
+            ),
+        )
+        .await
+        .unwrap();
+    assert_eq!(outcome.added, 3);
+    assert!(outcome.unresolved.is_empty(), "{:?}", outcome.unresolved);
+    assert_eq!(
+        *service.records.companies_created.lock().unwrap(),
+        ["beta.io"]
+    );
+    let mut people = service.records.people_created.lock().unwrap().clone();
+    people.sort();
+    assert_eq!(people, ["jo@outlook.com", "sam.lee@gmail.com"]);
+    assert_eq!(
+        *service.records.contacts_created.lock().unwrap(),
+        [(id_of("beta.io"), "raj@beta.io".to_owned())]
     );
 }
 

@@ -1,4 +1,5 @@
-//! CreateContact tool: manually add a contact to a CRM company.
+//! CreateContact tool: manually add a contact to a CRM company, or a person
+//! contact with no company.
 
 use ai_toolset::{AsyncTool, RequestContext, ServiceContext, ToolResult};
 use ai_toolset::{ToolAnnotated, ToolAnnotations};
@@ -11,7 +12,7 @@ use uuid::Uuid;
 
 use crate::domain::service::CrmService;
 
-use super::{CrmToolContext, company_view_receipt, crm_error};
+use super::{CrmToolContext, caller_team_receipt, company_view_receipt, crm_error};
 
 /// The created contact.
 #[derive(Debug, Serialize, JsonSchema)]
@@ -19,25 +20,28 @@ use super::{CrmToolContext, company_view_receipt, crm_error};
 pub struct CreateContactResponse {
     /// The new CRM contact id.
     pub contact_id: Uuid,
-    /// The company the contact belongs to.
-    pub company_id: Uuid,
+    /// The company the contact belongs to; absent for a person contact.
+    pub company_id: Option<Uuid>,
     /// The contact's email.
     pub email: String,
     /// The contact's display name.
     pub name: Option<String>,
 }
 
-/// Manually add a contact to a CRM company.
+/// Manually add a contact to a CRM company, or a person contact with no
+/// company.
 #[derive(Debug, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 #[schemars(
     title = "CreateContact",
-    description = "Add a contact person to a company in the user's team CRM, as Add Contact on a company does. The email's domain must be one of the company's domains. Find the company with ListCompanies, or add it first with CreateCompany."
+    description = "Add a contact person to the user's team CRM, as New contact does. With a companyId, the contact goes under that company and the email's domain must be one of the company's domains; find the company with ListCompanies, or add it first with CreateCompany. Without one, the contact is a person contact with no company, for a client on a personal address such as gmail.com; their email then links to them automatically."
 )]
 pub struct CreateContact {
-    /// Company to add the contact to.
-    #[schemars(description = "The CRM company id to add the contact to.")]
-    pub company_id: Uuid,
+    /// Company to add the contact to; omit for a person contact.
+    #[schemars(
+        description = "The CRM company id to add the contact to. Omit it for a person contact with no company."
+    )]
+    pub company_id: Option<Uuid>,
     /// Display name.
     #[schemars(description = "The contact's name.")]
     pub name: String,
@@ -59,23 +63,36 @@ where
 {
     type Output = CreateContactResponse;
 
-    #[tracing::instrument(skip_all, fields(user_id=?request_context.user_id, company_id=%self.company_id), err)]
+    #[tracing::instrument(skip_all, fields(user_id=?request_context.user_id, company_id=?self.company_id), err)]
     async fn call(
         &self,
         service_context: ServiceContext<CrmToolContext<CSvc, ESvc, PSvc>>,
         request_context: RequestContext,
     ) -> ToolResult<Self::Output> {
-        let (company, _) = company_view_receipt(
-            &*service_context.entity_access_service,
-            &request_context,
-            self.company_id,
-        )
-        .await?;
-        let contact = service_context
-            .service
-            .create_contact(&company, self.name.trim(), self.email.trim())
-            .await
-            .map_err(crm_error)?;
+        let contact = match self.company_id {
+            Some(company_id) => {
+                let (company, _) = company_view_receipt(
+                    &*service_context.entity_access_service,
+                    &request_context,
+                    company_id,
+                )
+                .await?;
+                service_context
+                    .service
+                    .create_contact(&company, self.name.trim(), self.email.trim())
+                    .await
+            }
+            None => {
+                let (team, _) =
+                    caller_team_receipt(&*service_context.entity_access_service, &request_context)
+                        .await?;
+                service_context
+                    .service
+                    .create_person_contact(&team, self.name.trim(), self.email.trim())
+                    .await
+            }
+        }
+        .map_err(crm_error)?;
 
         Ok(CreateContactResponse {
             contact_id: contact.id,

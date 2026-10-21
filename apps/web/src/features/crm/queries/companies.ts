@@ -188,11 +188,13 @@ export function createCompanyImporter(
 
 /**
  * Manually creates a contact under a company via
- * `POST /crm/companies/{id}/contacts` (a display name + email). Invalidates
- * the company detail query (contacts arrive embedded there) and soup so
- * contact listings refresh. Server-side failures worth surfacing: 409 when
- * the company already tracks the email, 404 when the company isn't
- * visible to the caller, 403 when CRM is disabled for the team.
+ * `POST /crm/companies/{id}/contacts` (a display name + email), or a person
+ * contact with no company via `POST /crm/contacts`. Invalidates the company
+ * detail query (contacts arrive embedded there) and soup so contact listings
+ * refresh. Server-side failures worth surfacing: 409 when the company or team
+ * already tracks the email (or, for a person contact, its domain is a
+ * company's), 404 when the company isn't visible to the caller, 403 when CRM
+ * is disabled for the team.
  */
 export function useCreateContactMutation(deps: CrmRecordDependencies) {
   return useMutation(
@@ -202,18 +204,22 @@ export function useCreateContactMutation(deps: CrmRecordDependencies) {
         name,
         email,
       }: {
-        companyId: string;
+        /** Omit to create a person contact with no company. */
+        companyId?: string;
         name: string;
         email: string;
       }) =>
         throwOnErr(() =>
-          deps.storage.createContact({ companyId, name, email })
+          companyId
+            ? deps.storage.createContact({ companyId, name, email })
+            : deps.storage.createPersonContact({ name, email })
         ),
       onSuccess: (_data, { companyId }) =>
         Promise.all([
-          deps.client.invalidateQueries({
-            queryKey: crmKeys.company(companyId).queryKey,
-          }),
+          companyId &&
+            deps.client.invalidateQueries({
+              queryKey: crmKeys.company(companyId).queryKey,
+            }),
           deps.client.invalidateQueries({ queryKey: soupKeys._def }),
         ]),
     }),

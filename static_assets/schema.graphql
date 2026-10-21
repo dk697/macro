@@ -7462,7 +7462,7 @@ type GraphqlSoupCrmContact implements GraphqlSoupEntity {
 	"""
 	displayName: String
 	"""
-	Record metadata; the parent is the owning company.
+	Record metadata; the parent is the owning company, if any.
 	"""
 	metadata: GraphqlEntityMetadata!
 	"""
@@ -7470,13 +7470,21 @@ type GraphqlSoupCrmContact implements GraphqlSoupEntity {
 	"""
 	teamId: ID!
 	"""
-	Parent company.
+	Parent company; empty for a person contact, which has no company.
 	"""
-	companyId: ID!
+	companyId: ID! @deprecated(reason: "Use parentCompanyId, which is null for a person contact. Remove after 2026-12-31.")
 	"""
-	Parent company's display name.
+	Parent company's display name; empty for a person contact.
 	"""
-	companyName: String!
+	companyName: String! @deprecated(reason: "Use parentCompanyName, which is null for a person contact. Remove after 2026-12-31.")
+	"""
+	Parent company; null for a person contact, which has no company.
+	"""
+	parentCompanyId: ID
+	"""
+	Parent company's display name; null for a person contact.
+	"""
+	parentCompanyName: String
 	"""
 	Full email address.
 	"""

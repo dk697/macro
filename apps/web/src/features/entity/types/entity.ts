@@ -404,8 +404,8 @@ export type CrmContactEntity = EntityBase & {
   companyName?: string;
   firstInteraction?: string;
   lastInteraction?: string;
-  /** The company the contact belongs to. */
-  companyId: string;
+  /** The company the contact belongs to; absent for a person contact. */
+  companyId?: string;
   /** The contact's email address. */
   email: string;
   /** Whether the contact has been hidden from the CRM listings. Only

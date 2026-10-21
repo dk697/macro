@@ -166,15 +166,19 @@ pub struct CrmDomain {
     pub created_at: DateTime<Utc>,
 }
 
-/// A contact (individual external party) belonging to a [`CrmCompany`].
-/// Tracked per `(company_id, email)`; `name` is the first non-NULL display
-/// name observed across the team's populates.
+/// A contact (individual external party), usually belonging to a
+/// [`CrmCompany`]. Company contacts are tracked per `(company_id, email)`.
+/// A person contact has no company and owns its address within the team,
+/// so a client on a personal address like `gmail.com` can be tracked.
+/// `name` is the first non-NULL display name observed across the team's
+/// populates.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct CrmContact {
     /// The id of the contact record
     pub id: uuid::Uuid,
-    /// The id of the company the contact belongs to
-    pub company_id: uuid::Uuid,
+    /// The id of the company the contact belongs to; `None` for a person
+    /// contact
+    pub company_id: Option<uuid::Uuid>,
     /// The contact's email address
     pub email: String,
     /// Display name observed for the contact, if any
@@ -402,6 +406,13 @@ pub enum CrmError {
     /// The contact's email domain is not one of the company's domains.
     #[error("contact email domain must match one of the company's domains")]
     ContactEmailDomainMismatch,
+    /// The team already has a contact with the requested email.
+    #[error("a crm contact with this email already exists for the team")]
+    ContactAlreadyExistsForTeam,
+    /// A person contact was requested for an address on a domain the team
+    /// tracks as a company; the contact belongs under that company.
+    #[error("a crm company already tracks this email domain")]
+    ContactDomainTrackedByCompany,
     /// The team-level `team_crm_settings.crm_enabled` killswitch is off.
     #[error("crm is not enabled for this team")]
     CrmDisabledForTeam,
@@ -415,10 +426,11 @@ pub enum CrmError {
 pub struct CrmContactForSoup {
     /// The original team-owned contact; its identity is never merged.
     pub contact: CrmContact,
-    /// Team owning the company/contact record.
+    /// Team owning the contact record.
     pub team_id: uuid::Uuid,
-    /// The company's display name (team override, directory name, or domain).
-    pub company_name: String,
+    /// The company's display name (team override, directory name, or
+    /// domain); `None` for a person contact.
+    pub company_name: Option<String>,
     /// When this viewer last opened this particular contact record.
     pub viewed_at: Option<DateTime<Utc>>,
 }

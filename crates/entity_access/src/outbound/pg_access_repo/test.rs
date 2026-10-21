@@ -452,6 +452,64 @@ async fn crm_contact_access_denies_other_team(pool: PgPool) -> anyhow::Result<()
     migrator = "MACRO_DB_MIGRATIONS",
     fixtures(path = "../../../fixtures", scripts("user_team"))
 )]
+async fn crm_person_contact_access_follows_the_contacts_team(pool: PgPool) -> anyhow::Result<()> {
+    let team_alpha = Uuid::parse_str(TEAM_ALPHA)?;
+    let visible = Uuid::new_v4();
+    let hidden = Uuid::new_v4();
+    for (id, email, is_hidden) in [
+        (visible, "sam.lee@gmail.com", false),
+        (hidden, "jo.park@gmail.com", true),
+    ] {
+        sqlx::query!(
+            r#"
+            INSERT INTO crm_contacts (id, team_id, email, hidden, first_interaction, last_interaction)
+            VALUES ($1, $2, $3, $4, now(), now())
+            "#,
+            id,
+            team_alpha,
+            email,
+            is_hidden,
+        )
+        .execute(&pool)
+        .await?;
+    }
+    let repo = PgAccessRepository::new(pool);
+
+    assert_eq!(
+        repo.get_crm_contact_access(&visible.to_string(), Some(&user_id(TEAM_MEMBER)))
+            .await?,
+        Some(CrmEntityAccess {
+            access_level: AccessLevel::Edit,
+            team_id: team_alpha,
+            team_role: TeamRole::Member,
+        }),
+    );
+    assert_eq!(
+        repo.get_crm_contact_access(&visible.to_string(), Some(&user_id(TEAM_BETA_OWNER)))
+            .await?,
+        None,
+    );
+    assert_eq!(
+        repo.get_crm_contact_access(&hidden.to_string(), Some(&user_id(TEAM_MEMBER)))
+            .await?,
+        None,
+    );
+    assert_eq!(
+        repo.get_crm_contact_access(&hidden.to_string(), Some(&user_id(TEAM_ADMIN)))
+            .await?,
+        Some(CrmEntityAccess {
+            access_level: AccessLevel::Edit,
+            team_id: team_alpha,
+            team_role: TeamRole::Admin,
+        }),
+    );
+    Ok(())
+}
+
+#[sqlx::test(
+    migrator = "MACRO_DB_MIGRATIONS",
+    fixtures(path = "../../../fixtures", scripts("user_team"))
+)]
 async fn crm_contact_access_rejects_invalid_uuid(pool: PgPool) -> anyhow::Result<()> {
     let repo = PgAccessRepository::new(pool);
     let err = repo

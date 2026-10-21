@@ -33,7 +33,8 @@ impl<S: SystemPropertiesService> PgCallCrmLinker<S> {
 
     /// CRM companies (and contacts, when the address is a known contact) that
     /// the people on a call belong to, in the CRMs of the teams of the Macro
-    /// accounts on the call. A team's own members never match its CRM, and
+    /// accounts on the call. A person contact (no company) matches on its
+    /// exact address. A team's own members never match its CRM, and
     /// hidden records and teams with the CRM disabled are skipped.
     async fn matching_records(
         &self,
@@ -75,12 +76,20 @@ impl<S: SystemPropertiesService> PgCallCrmLinker<S> {
                     WHERE tu.team_id = t.team_id AND LOWER(tu.user_id) = 'macro|' || p.email
                 )
             )
-            SELECT DISTINCT co.id AS company_id, ct.id AS "contact_id?"
+            SELECT co.id AS "company_id?", ct.id AS "contact_id?"
             FROM outsiders o
             JOIN crm_domains d ON d.team_id = o.team_id AND LOWER(d.domain) = o.domain
             JOIN crm_companies co ON co.id = d.company_id AND NOT co.hidden
             LEFT JOIN crm_contacts ct
                 ON ct.company_id = co.id AND LOWER(ct.email) = o.email AND NOT ct.hidden
+            UNION
+            SELECT NULL::uuid, ct.id
+            FROM outsiders o
+            JOIN crm_contacts ct
+                ON ct.team_id = o.team_id
+               AND ct.company_id IS NULL
+               AND LOWER(ct.email) = o.email
+               AND NOT ct.hidden
             "#,
             &user_ids,
             &emails,
@@ -88,7 +97,7 @@ impl<S: SystemPropertiesService> PgCallCrmLinker<S> {
         .fetch_all(&self.pool)
         .await?;
 
-        let company_ids: BTreeSet<Uuid> = rows.iter().map(|row| row.company_id).collect();
+        let company_ids: BTreeSet<Uuid> = rows.iter().filter_map(|row| row.company_id).collect();
         let contact_ids: BTreeSet<Uuid> = rows.iter().filter_map(|row| row.contact_id).collect();
         Ok((
             company_ids.into_iter().collect(),

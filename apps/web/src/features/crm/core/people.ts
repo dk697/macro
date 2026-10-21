@@ -1,6 +1,6 @@
 import type { CrmContact } from './contact';
 
-export type CrmPerson = CrmContact & { companyName: string };
+export type CrmPerson = CrmContact & { companyName?: string | null };
 
 /** The fields that choose one visible record for a contact email. */
 export type ContactRepresentative = {

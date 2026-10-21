@@ -116,6 +116,15 @@ impl CrmService for FakeCrm {
         unimplemented!("FakeCrm.create_contact")
     }
 
+    async fn create_person_contact(
+        &self,
+        _access: &CrmTeamReceipt<MemberTeamRole>,
+        _name: &str,
+        _email: &str,
+    ) -> Result<CrmContact, CrmError> {
+        unimplemented!("FakeCrm.create_person_contact")
+    }
+
     async fn set_email_sync(
         &self,
         _access: &CrmCompanyReceipt<EditAccessLevel>,

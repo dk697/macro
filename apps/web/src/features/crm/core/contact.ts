@@ -1,7 +1,8 @@
 /** CRM contact values, independent of the transport schema. */
 export type CrmContact = {
   id: string;
-  companyId: string;
+  /** Absent for a person contact, which has no company. */
+  companyId?: string | null;
   name?: string | null;
   email: string;
   hidden: boolean;

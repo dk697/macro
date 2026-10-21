@@ -26,8 +26,9 @@ use super::CrmRouterState;
 pub struct CrmContactResponse {
     /// The id of the contact record.
     pub id: Uuid,
-    /// The id of the company the contact belongs to.
-    pub company_id: Uuid,
+    /// The id of the company the contact belongs to; null for a person
+    /// contact, which has no company.
+    pub company_id: Option<Uuid>,
     /// The contact's email address.
     pub email: String,
     /// Display name observed for the contact, if any.

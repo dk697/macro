@@ -826,8 +826,8 @@ where
         // handler is idempotent, so a missed enqueue can be retried
         // without leaving the system in an inconsistent state. Team
         // deletion is handled separately via the
-        // `crm_companies.team_id` FK cascade and does NOT route through
-        // this enqueuer.
+        // `crm_companies.team_id` and `crm_contacts.team_id` FK cascades
+        // and does NOT route through this enqueuer.
         if let Err(e) = self
             .crm_enqueuer
             .enqueue_depopulate_crm_for_user(&team_id, user_id)

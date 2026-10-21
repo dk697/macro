@@ -41,15 +41,15 @@ impl<E: SoupEntityEdges> GraphqlSoupCrmContact<E> {
                 .to_owned(),
         )
     }
-    /// Record metadata; the parent is the owning company.
+    /// Record metadata; the parent is the owning company, if any.
     pub(super) async fn metadata(&self) -> GraphqlEntityMetadata {
         GraphqlEntityMetadata {
             owner_id: None,
             owner_type: None,
-            parent: Some(graphql_entity(
-                model_entity::EntityType::CrmCompany,
-                self.0.company_id,
-            )),
+            parent: self
+                .0
+                .company_id
+                .map(|company_id| graphql_entity(model_entity::EntityType::CrmCompany, company_id)),
             created_at: Some(self.0.created_at.to_rfc3339()),
             updated_at: Some(self.0.updated_at.to_rfc3339()),
             viewed_at: self.0.viewed_at.map(|value| value.to_rfc3339()),
@@ -60,13 +60,33 @@ impl<E: SoupEntityEdges> GraphqlSoupCrmContact<E> {
     pub(super) async fn team_id(&self) -> ID {
         ID(self.0.team_id.to_string())
     }
-    /// Parent company.
+    /// Parent company; empty for a person contact, which has no company.
+    #[graphql(
+        deprecation = "Use parentCompanyId, which is null for a person contact. Remove after 2026-12-31."
+    )]
     pub(super) async fn company_id(&self) -> ID {
-        ID(self.0.company_id.to_string())
+        ID(self
+            .0
+            .company_id
+            .map(|company_id| company_id.to_string())
+            .unwrap_or_default())
     }
-    /// Parent company's display name.
+    /// Parent company's display name; empty for a person contact.
+    #[graphql(
+        deprecation = "Use parentCompanyName, which is null for a person contact. Remove after 2026-12-31."
+    )]
     pub(super) async fn company_name(&self) -> &str {
-        &self.0.company_name
+        self.0.company_name.as_deref().unwrap_or_default()
+    }
+    /// Parent company; null for a person contact, which has no company.
+    pub(super) async fn parent_company_id(&self) -> Option<ID> {
+        self.0
+            .company_id
+            .map(|company_id| ID(company_id.to_string()))
+    }
+    /// Parent company's display name; null for a person contact.
+    pub(super) async fn parent_company_name(&self) -> Option<&str> {
+        self.0.company_name.as_deref()
     }
     /// Full email address.
     pub(super) async fn email(&self) -> &str {

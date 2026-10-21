@@ -25,6 +25,7 @@ use super::{
         CsvTable, RecordRow, company_pipeline_rows, encode_csv, parse_csv, record_rows,
         unique_companies,
     },
+    generic_email_domains::is_generic_email_domain,
     pipeline_workflows::{
         EntryAddition, EntryQuery, FieldInput, FieldKind, FieldValue, MAX_SCANNED_ROWS,
         NewPipeline, PipelineEdit, PipelineField, PipelineOverview, PipelineWorkflowService,
@@ -323,7 +324,8 @@ where
 
     /// Each row's contact: found by email, or created under its domain's
     /// company. Missing companies are created first, once per domain, so
-    /// contacts at one new domain share it.
+    /// contacts at one new domain share it. Rows on a generic provider
+    /// domain (`gmail.com`) become person contacts with no company.
     async fn contacts(
         &self,
         viewer: &Viewer,
@@ -346,7 +348,7 @@ where
             .iter()
             .filter(|(_, id)| id.is_none())
             .filter_map(|(row, _)| email_domain(&row.key).map(str::to_owned))
-            .filter(|domain| domains.get(domain).is_none())
+            .filter(|domain| !is_generic_email_domain(domain) && domains.get(domain).is_none())
             .collect::<HashSet<_>>()
             .into_iter()
             .collect();
@@ -377,6 +379,20 @@ where
                         return Ok((row.key.clone(), Ok((id, false))));
                     }
                     let domain = email_domain(&row.key).unwrap_or_default();
+                    if is_generic_email_domain(domain) {
+                        let found = match self
+                            .records
+                            .create_person_contact(viewer, &row.name, &row.key)
+                            .await?
+                        {
+                            Created::New(id) => Ok((id, true)),
+                            Created::Exists => {
+                                Err("the contact exists where the user cannot see it".into())
+                            }
+                            Created::Refused(reason) => Err(reason),
+                        };
+                        return Ok::<_, TransferError>((row.key.clone(), found));
+                    }
                     let Some(company) = domains.get(domain) else {
                         let reason = refused
                             .get(domain)

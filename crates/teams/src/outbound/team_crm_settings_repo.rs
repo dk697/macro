@@ -2,10 +2,14 @@
 //! [`crate::domain::team_crm_settings_repo::TeamCrmSettingsRepository`].
 //!
 //! Owns the `team_crm_settings` row for each team and the bulk
-//! teardown of `crm_companies` (with FK cascade) when CRM is disabled.
+//! teardown of `crm_companies` (with FK cascade) and person contacts
+//! when CRM is disabled.
 
 use crate::domain::{model::TeamError, team_crm_settings_repo::TeamCrmSettingsRepository};
 use sqlx::PgPool;
+
+#[cfg(test)]
+mod test;
 
 /// Macrodb-backed [`TeamCrmSettingsRepository`].
 #[derive(Clone, Debug)]
@@ -86,6 +90,14 @@ impl TeamCrmSettingsRepository for TeamCrmSettingsRepositoryImpl {
         sqlx::query!(r#"DELETE FROM crm_companies WHERE team_id = $1"#, team_id,)
             .execute(&mut *tx)
             .await?;
+
+        // Person contacts have no company to cascade from.
+        sqlx::query!(
+            r#"DELETE FROM crm_contacts WHERE team_id = $1 AND company_id IS NULL"#,
+            team_id,
+        )
+        .execute(&mut *tx)
+        .await?;
 
         tx.commit().await?;
         Ok(())

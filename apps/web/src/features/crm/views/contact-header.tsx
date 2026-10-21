@@ -25,7 +25,7 @@ function TitleEditor(props: { contact: CrmContactResponse }) {
       onRename={(name) =>
         renameMutation.mutate({
           contactId: props.contact.id,
-          companyId: props.contact.companyId,
+          companyId: props.contact.companyId ?? undefined,
           name,
         })
       }
@@ -34,13 +34,13 @@ function TitleEditor(props: { contact: CrmContactResponse }) {
 }
 
 function CompanyPill(props: {
-  contact: CrmContactResponse;
+  companyId: string;
   onOpenCompany?: (companyId: string) => boolean;
 }) {
   const { openWithSplit } = useCrmContext().createNavigation();
-  const { company } = useCompanyQuery(() => props.contact.companyId);
+  const { company } = useCompanyQuery(() => props.companyId);
   const openCompany = (event: MouseEvent) => {
-    const companyId = props.contact.companyId;
+    const companyId = props.companyId;
     if (!event.shiftKey && props.onOpenCompany?.(companyId)) return;
     openWithSplit(
       { type: 'company', id: companyId },
@@ -110,10 +110,14 @@ export function ContactHeader(props: {
               <EnvelopeIcon class="size-3" />
               {contact().email}
             </Badge>
-            <CompanyPill
-              contact={contact()}
-              onOpenCompany={props.onOpenCompany}
-            />
+            <Show when={contact().companyId}>
+              {(companyId) => (
+                <CompanyPill
+                  companyId={companyId()}
+                  onOpenCompany={props.onOpenCompany}
+                />
+              )}
+            </Show>
             <Tooltip label={formatDateAndTime(contact().lastInteraction)}>
               <Badge variant="outline" size="sm">
                 <ClockIcon class="size-3" />

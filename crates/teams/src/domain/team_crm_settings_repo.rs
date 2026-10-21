@@ -2,7 +2,8 @@
 //! teardown of a team's CRM data.
 //!
 //! CRM data (`crm_companies` and the cascading `crm_domains` /
-//! `crm_contacts` / `crm_contact_sources` rows) is owned by macrodb,
+//! `crm_contacts` / `crm_contact_sources` rows, plus person contacts
+//! with no company) is owned by macrodb,
 //! same as `team_crm_settings`. We expose both behind a single port so
 //! the disable flow can flip the flag and drop the data atomically in
 //! one transaction.
@@ -28,10 +29,11 @@ pub trait TeamCrmSettingsRepository: Clone + Send + Sync + 'static {
     ) -> impl Future<Output = Result<bool, TeamError>> + Send;
 
     /// Atomically upserts `crm_enabled = false` for the team and
-    /// deletes every `crm_companies` row owned by the team. The FK
-    /// cascade from `crm_companies` clears `crm_domains`,
-    /// `crm_contacts`, and `crm_contact_sources`. Idempotent — safe to
-    /// call when already disabled (the DELETE just affects zero rows).
+    /// deletes every `crm_companies` row owned by the team, plus the
+    /// team's person contacts (no company). The FK cascade from
+    /// `crm_companies` clears `crm_domains`, `crm_contacts`, and
+    /// `crm_contact_sources`. Idempotent — safe to call when already
+    /// disabled (the DELETEs just affect zero rows).
     fn disable_crm_and_purge_data(
         &self,
         team_id: &uuid::Uuid,

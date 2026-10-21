@@ -147,10 +147,10 @@ export function AddPipelineRecordDialog(
       return id;
     }
     const email = current.email.trim().toLowerCase();
-    const joins = contactCompany(email, domainCompanies());
-    if (!joins) throw new Error('A new contact needs a company.');
+    // Without a company on the email's domain, the contact is a person
+    // contact.
     const { id } = await createContact.mutateAsync({
-      companyId: joins.id,
+      companyId: contactCompany(email, domainCompanies())?.id,
       name: current.name.trim(),
       email,
     });
@@ -184,7 +184,7 @@ export function AddPipelineRecordDialog(
     const current = choice();
     const titleField = title();
     if (pending() || !current || !titleField) return;
-    const problem = recordChoiceProblem(current, domainCompanies());
+    const problem = recordChoiceProblem(current);
     if (problem) {
       setError(problem);
       return;

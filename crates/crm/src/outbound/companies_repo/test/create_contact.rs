@@ -24,7 +24,7 @@ async fn create_contact_inserts_contact(pool: PgPool) -> anyhow::Result<()> {
     // interaction endpoints seed from `now`.
     assert_eq!(contact.email, "jane@acme.com");
     assert_eq!(contact.name.as_deref(), Some("Jane"));
-    assert_eq!(contact.company_id, company_id);
+    assert_eq!(contact.company_id, Some(company_id));
     assert!(!contact.hidden);
     assert_eq!(
         contact.first_interaction.timestamp_micros(),

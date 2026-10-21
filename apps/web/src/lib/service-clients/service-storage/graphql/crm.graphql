@@ -13,8 +13,8 @@ fragment GraphqlCrmContactFields on GraphqlSoupCrmContact {
   __typename
   id
   contactTeamId: teamId
-  companyId
-  companyName
+  parentCompanyId
+  parentCompanyName
   email
   crmContactName: name
   hidden
