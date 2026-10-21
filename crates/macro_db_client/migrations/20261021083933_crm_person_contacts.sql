@@ -28,6 +28,10 @@ CREATE TRIGGER crm_contacts_fill_team_id
     BEFORE INSERT ON crm_contacts
     FOR EACH ROW EXECUTE FUNCTION crm_contacts_fill_team_id();
 
-ALTER TABLE crm_contacts ALTER COLUMN team_id SET NOT NULL;
+-- NOT VALID skips the full-table scan here; the next migration validates
+-- it without blocking writes, and the one after uses it to set NOT NULL
+-- without a second scan.
+ALTER TABLE crm_contacts
+    ADD CONSTRAINT crm_contacts_team_id_not_null CHECK (team_id IS NOT NULL) NOT VALID;
 
 ALTER TABLE crm_contacts ALTER COLUMN company_id DROP NOT NULL;
