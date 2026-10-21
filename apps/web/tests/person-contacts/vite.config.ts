@@ -18,7 +18,7 @@ export default defineConfig((env) =>
   mergeConfig(createAppViteConfig()(env), {
     envDir: import.meta.dirname,
     cacheDir: 'node_modules/.vite-person-contacts-browser',
-    build: { outDir: '/tmp/person-contacts-dist', sourcemap: false },
+    build: { outDir: '/tmp/person-contacts-dist', sourcemap: true },
     preview: { host: '127.0.0.1', port: 3038, strictPort: true },
   })
 );
