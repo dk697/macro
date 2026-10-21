@@ -4,14 +4,16 @@
  * document_storage_service
  * OpenAPI spec version: 0.1.0
  */
+import type { CrmContactResponseCompanyId } from './crmContactResponseCompanyId';
 import type { CrmContactResponseName } from './crmContactResponseName';
 
 /**
  * A CRM contact as returned by `GET /crm/companies/{company_id}/contacts`.
  */
 export interface CrmContactResponse {
-  /** The id of the company the contact belongs to. */
-  companyId: string;
+  /** The id of the company the contact belongs to; null for a person
+contact, which has no company. */
+  companyId?: CrmContactResponseCompanyId;
   /** When the contact record was created. */
   createdAt: string;
   /** The contact's email address. */

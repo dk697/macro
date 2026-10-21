@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM crm_contacts WHERE team_id = $1 AND company_id IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3742436f9d48504c4f11f6fac7e19e4852fbdb8d3facd070d6abe1f2f451db8a"
+}

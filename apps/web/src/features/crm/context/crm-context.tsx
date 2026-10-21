@@ -144,14 +144,15 @@ export type CrmContext = {
     { id: string }
   >;
   createCompanyImporter(): CompanyImporter;
+  /** Without a `companyId`, creates a person contact with no company. */
   createContact(): CrmMutation<
-    { companyId: string; name: string; email: string },
+    { companyId?: string; name: string; email: string },
     { id: string }
   >;
   renameCompany(): CrmMutation<{ companyId: string; name: string }>;
   renameContact(): CrmMutation<{
     contactId: string;
-    companyId: string;
+    companyId?: string;
     name: string;
   }>;
   hideCompany(): CrmMutation<{ companyId: string; hidden: boolean }>;

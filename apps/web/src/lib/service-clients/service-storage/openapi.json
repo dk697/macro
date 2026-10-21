@@ -6001,6 +6001,83 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": ["crm::inbound::axum_router::create_person_contact"],
+        "summary": "Manually create a person contact: a contact with no company, for a\nclient on a personal address. Any team member may add one. Email to or\nfrom the address attaches to the contact, including on generic provider\ndomains. The team must not already have a contact with the email or\ntrack its domain as a company (409), and the team's CRM killswitch must\nbe on (403).",
+        "operationId": "create_crm_person_contact",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCrmPersonContactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrmContactResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/crm/contacts/by-email": {
@@ -24377,6 +24454,21 @@
           }
         }
       },
+      "CreateCrmPersonContactRequest": {
+        "type": "object",
+        "description": "Request body for `POST /crm/contacts`.",
+        "required": ["name", "email"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "The contact's email address, e.g. \"jane.doe@gmail.com\". Personal\nprovider domains are allowed; a domain the team tracks as a company\nis not (409): add the contact under that company instead."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name for the contact."
+          }
+        }
+      },
       "CreateDatabaseRequest": {
         "type": "object",
         "description": "Request body for creating a database.",
@@ -25333,7 +25425,6 @@
         "description": "A CRM contact as returned by `GET /crm/companies/{company_id}/contacts`.",
         "required": [
           "id",
-          "companyId",
           "email",
           "hidden",
           "firstInteraction",
@@ -25343,9 +25434,9 @@
         ],
         "properties": {
           "companyId": {
-            "type": "string",
+            "type": ["string", "null"],
             "format": "uuid",
-            "description": "The id of the company the contact belongs to."
+            "description": "The id of the company the contact belongs to; null for a person\ncontact, which has no company."
           },
           "createdAt": {
             "type": "string",
@@ -38046,8 +38137,6 @@
             "required": [
               "id",
               "teamId",
-              "companyId",
-              "companyName",
               "email",
               "hidden",
               "firstInteraction",
@@ -38057,13 +38146,13 @@
             ],
             "properties": {
               "companyId": {
-                "type": "string",
+                "type": ["string", "null"],
                 "format": "uuid",
-                "description": "Parent company ID."
+                "description": "Parent company ID; `None` for a person contact."
               },
               "companyName": {
-                "type": "string",
-                "description": "Parent company's display name."
+                "type": ["string", "null"],
+                "description": "Parent company's display name; `None` for a person contact."
               },
               "createdAt": {
                 "type": "string",

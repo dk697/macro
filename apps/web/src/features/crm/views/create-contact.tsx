@@ -235,7 +235,8 @@ export function CreateContactModal(props: {
                       spellcheck={false}
                       data-1p-ignore
                       aria-invalid={
-                        error() === 'Enter the part of the email before the @' ||
+                        error() ===
+                          'Enter the part of the email before the @' ||
                         error() === 'Enter an email address'
                       }
                       class="ph-no-capture field-sizing-content max-w-full bg-transparent text-ink outline-none placeholder:text-ink-placeholder"

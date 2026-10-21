@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO crm_contacts (team_id, company_id, email, name, first_interaction, last_interaction, hidden)\n            VALUES ($8, $1, $2, $3, $4, $5, $7)\n            ON CONFLICT (company_id, email) DO UPDATE\n                SET name = COALESCE(crm_contacts.name, EXCLUDED.name),\n                    updated_at = now(),\n                    first_interaction = CASE\n                        WHEN $6 THEN LEAST(crm_contacts.first_interaction, EXCLUDED.first_interaction)\n                        ELSE crm_contacts.first_interaction\n                    END,\n                    last_interaction = GREATEST(crm_contacts.last_interaction, EXCLUDED.last_interaction)\n            RETURNING id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Bool",
+        "Bool",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a7a9539421624b66128163a9e48a63015317ef41590009c170a7fc926b154179"
+}

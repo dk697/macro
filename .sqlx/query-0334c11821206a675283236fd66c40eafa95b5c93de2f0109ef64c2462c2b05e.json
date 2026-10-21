@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH contact AS (\n                UPDATE crm_contacts\n                SET updated_at = now(),\n                    first_interaction = CASE\n                        WHEN $5 THEN LEAST(first_interaction, $3)\n                        ELSE first_interaction\n                    END,\n                    last_interaction = GREATEST(last_interaction, $4)\n                WHERE team_id = $1\n                  AND company_id IS NULL\n                  AND LOWER(email) = $2\n                  AND EXISTS (\n                      SELECT 1 FROM team_crm_settings\n                      WHERE team_id = $1 AND crm_enabled\n                  )\n                RETURNING id\n            ),\n            source AS (\n                INSERT INTO crm_contact_sources (contact_id, link_id)\n                SELECT id, $6 FROM contact\n                ON CONFLICT (contact_id, link_id) DO NOTHING\n            )\n            SELECT EXISTS (SELECT 1 FROM contact) AS \"attached!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "attached!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Bool",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "0334c11821206a675283236fd66c40eafa95b5c93de2f0109ef64c2462c2b05e"
+}

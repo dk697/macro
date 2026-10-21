@@ -4,14 +4,16 @@
  * document_storage_service
  * OpenAPI spec version: 0.1.0
  */
+import type { SoupCrmContactSoupPropertiesFieldAllOfTwoCompanyId } from './soupCrmContactSoupPropertiesFieldAllOfTwoCompanyId';
+import type { SoupCrmContactSoupPropertiesFieldAllOfTwoCompanyName } from './soupCrmContactSoupPropertiesFieldAllOfTwoCompanyName';
 import type { SoupCrmContactSoupPropertiesFieldAllOfTwoName } from './soupCrmContactSoupPropertiesFieldAllOfTwoName';
 import type { SoupCrmContactSoupPropertiesFieldAllOfTwoViewedAt } from './soupCrmContactSoupPropertiesFieldAllOfTwoViewedAt';
 
 export type SoupCrmContactSoupPropertiesFieldAllOfTwo = {
-  /** Parent company ID. */
-  companyId: string;
-  /** Parent company's display name. */
-  companyName: string;
+  /** Parent company ID; `None` for a person contact. */
+  companyId?: SoupCrmContactSoupPropertiesFieldAllOfTwoCompanyId;
+  /** Parent company's display name; `None` for a person contact. */
+  companyName?: SoupCrmContactSoupPropertiesFieldAllOfTwoCompanyName;
   /** Record creation time. */
   createdAt: string;
   /** Full email address. */

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT tu.user_id\n                FROM crm_contacts ct\n                LEFT JOIN crm_companies c ON c.id = ct.company_id\n                JOIN team_user tu ON tu.team_id = ct.team_id\n                WHERE ct.id = $1\n                  AND (NOT (ct.hidden OR COALESCE(c.hidden, FALSE)) OR tu.team_role <> 'member')\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e979a39b613ced8769dfa511095fbbae7c0f7aa723c640536980aacc6760fc77"
+}
