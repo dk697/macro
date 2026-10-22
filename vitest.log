@@ -1,0 +1,80 @@
+[90mstderr[2m | src/features/crm/route-adapter.test.tsx
+[22m[39mcomputations created outside a `createRoot` or `render` will never be disposed
+computations created outside a `createRoot` or `render` will never be disposed
+
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/views/add-pipeline-record.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 1452[2mms[22m[39m
+   [32m✓[39m AddPipelineRecordDialog [2m(5)[22m
+     [33m[2m✓[22m[39m waits for a company, then creates one row with the lane stage and every field[33m 534[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/queries/deal-stages.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 60[2mms[22m[39m
+[90mstderr[2m | src/features/crm/views/pipeline.test.tsx
+[22m[39mcomputations created outside a `createRoot` or `render` will never be disposed
+computations created outside a `createRoot` or `render` will never be disposed
+
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/views/pipeline.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 491[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/queries/pipeline-entries.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/queries/pipeline-transfer.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/core/pipeline-csv.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/primitives/pipeline-transfer.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/queries/pipeline-views.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/queries/graphql.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+[90mstderr[2m | src/features/crm/route-adapter.test.tsx
+[22m[39mcomputations created outside a `createRoot` or `render` will never be disposed
+computations created outside a `createRoot` or `render` will never be disposed
+
+[90mstderr[2m | src/features/crm/crm-route.test.ts
+[22m[39mcomputations created outside a `createRoot` or `render` will never be disposed
+computations created outside a `createRoot` or `render` will never be disposed
+
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/views/record-item-list.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/core/pipeline-record.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/views/company-contacts-section.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 138[2mms[22m[39m
+[90mstderr[2m | src/features/crm/components/pipeline-entry-cards.test.tsx
+[22m[39mcomputations created outside a `createRoot` or `render` will never be disposed
+computations created outside a `createRoot` or `render` will never be disposed
+
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/components/pipeline-entry-cards.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 180[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/architecture.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 442[2mms[22m[39m
+   [32m✓[39m CRM ownership boundaries [2m(2)[22m
+     [33m[2m✓[22m[39m keeps app consumers on explicit CRM entry points[33m 429[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/primitives/export-source.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/queries/record-items.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/primitives/filter-selections.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/core/contact-discovery.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/record-tasks-adapter.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 98[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/views/export-companies.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 233[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/core/navigation.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/route-views.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+[90mstderr[2m | src/features/crm/components/crm-sidebar.test.tsx
+[22m[39mcomputations created outside a `createRoot` or `render` will never be disposed
+computations created outside a `createRoot` or `render` will never be disposed
+
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/components/crm-sidebar.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 198[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/tests/export.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/queries/saved-view-codec.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+[90mstderr[2m | src/features/crm/views/import-companies.test.tsx
+[22m[39mcomputations created outside a `createRoot` or `render` will never be disposed
+computations created outside a `createRoot` or `render` will never be disposed
+
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/views/import-companies.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 266[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/queries/previews.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/primitives/default-view.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/crm-route.test.ts [2m([22m[2m35 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/core/people.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/route-adapter.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 93[2mms[22m[39m
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/core/record.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+[90mstderr[2m | src/features/crm/components/tool-pipelines.test.ts
+[22m[39mcomputations created outside a `createRoot` or `render` will never be disposed
+computations created outside a `createRoot` or `render` will never be disposed
+
+ [32m✓[39m [30m[43m app [49m[39m src/features/crm/components/tool-pipelines.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m38 passed[39m[22m[90m (38)[39m
+[2m      Tests [22m [1m[32m188 passed[39m[22m[90m (188)[39m
+[2m   Start at [22m 00:17:31
+[2m   Duration [22m 43.50s[2m (transform 57%, import 25%, environment 14%, tests 4%)[22m
+
+[2m  Transform [22m [30m[43m app [49m[39m [33mtransforming modules took 70.08s[39m[2m · 57% of tracked time, re-done on every run[22m
+[2m            [22m [2mpersist transforms across runs with [22m[33mfsModuleCache: true[39m
+[2m            [22m [2mon CI this only helps when the cache directory is persisted between runs[22m
+[2m            [22m [2mlearn more: https://vitest.dev/guide/improving-performance#caching-between-reruns[22m
+
