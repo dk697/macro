@@ -3,3 +3,4 @@ commit: 1fbef0c04741131774f856469aa935d3b6b80345
 type-check: success
 biome: success
 vitest: success
+screenshots: success
